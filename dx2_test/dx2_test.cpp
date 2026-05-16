@@ -37,19 +37,19 @@ struct TestContext
 	HWND window;
 	bool fullscreen = false;
 	bool shouldClose = false;
-	IDirectDraw* pdd = nullptr;
-	IDirectDraw2* pdd2 = nullptr;
-	IDirect3D* pd3d = nullptr;
-	IDirectDrawSurface* pddsPrimary = nullptr;
-	IDirectDrawSurface* pddsBack = nullptr;
-	IDirectDrawSurface* pdds1 = nullptr;
-	IDirectDrawClipper* pddClipper = nullptr;
-	IDirect3DDevice* pd3dd = nullptr;
-	IDirect3DViewport* pd3dViewport = nullptr;
-	IDirect3DExecuteBuffer* pd3deb = nullptr;
+	IDirectDraw *pdd = nullptr;
+	IDirectDraw2 *pdd2 = nullptr;
+	IDirect3D *pd3d = nullptr;
+	IDirectDrawSurface *pddsPrimary = nullptr;
+	IDirectDrawSurface *pddsBack = nullptr;
+	IDirectDrawSurface *pdds1 = nullptr;
+	IDirectDrawClipper *pddClipper = nullptr;
+	IDirect3DDevice *pd3dd = nullptr;
+	IDirect3DViewport *pd3dViewport = nullptr;
+	IDirect3DExecuteBuffer *pd3deb = nullptr;
 
-	IDirectDrawSurface* pddsTex = nullptr;
-	IDirect3DTexture* pd3dTex = nullptr;
+	IDirectDrawSurface *pddsTex = nullptr;
+	IDirect3DTexture *pd3dTex = nullptr;
 	D3DTEXTUREHANDLE texHandle = 0;
 
 	D3DMATRIXHANDLE mthWorld = 0;
@@ -67,7 +67,7 @@ struct TestContext
 	HRESULT d3dSetState(D3DOPCODE op, int state, DWORD value);
 };
 
-const char* WinProcMsgToString(UINT uMsg)
+const char *WinProcMsgToString(UINT uMsg)
 {
 	switch (uMsg)
 	{
@@ -147,22 +147,22 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		printf("WindowProc(%p, %X(%s), %p, %p)\n", hWnd, uMsg, WinProcMsgToString(uMsg), wParam, lParam);
 #endif
 
-	TestContext* ctx = nullptr;
+	TestContext *ctx = nullptr;
 	if (uMsg == WM_NCCREATE)
 	{
-		ctx = (TestContext*)((CREATESTRUCT*)lParam)->lpCreateParams;
+		ctx = (TestContext *)((CREATESTRUCT *)lParam)->lpCreateParams;
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)ctx);
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 
-	ctx = (TestContext*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	ctx = (TestContext *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
 	switch (uMsg) {
 #if 1
 #if 0
 	case WM_GETMINMAXINFO:
 	{
-		MINMAXINFO* info = (MINMAXINFO*)lParam;
+		MINMAXINFO *info = (MINMAXINFO *)lParam;
 		printf("MINMAXINFO ptMaxSize (%d,%d) ptMaxPosition (%d,%d) ptMinTrackSize (%d,%d) ptMaxTrackSize (%d,%d) \n",
 			info->ptMaxSize.x, info->ptMaxSize.y, info->ptMaxPosition.x, info->ptMaxPosition.y,
 			info->ptMinTrackSize.x, info->ptMinTrackSize.y, info->ptMaxTrackSize.x, info->ptMaxTrackSize.y);
@@ -177,7 +177,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		if (!wParam)
 		{
-			RECT* r = (RECT*)lParam;
+			RECT *r = (RECT *)lParam;
 			printf("NCCALCSIZE %d %d %d %d\n", r->left, r->top, r->right, r->bottom);
 		}
 		break;
@@ -186,7 +186,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_WINDOWPOSCHANGING:
 	case WM_WINDOWPOSCHANGED:
 	{
-		WINDOWPOS* info = (WINDOWPOS*)lParam;
+		WINDOWPOS *info = (WINDOWPOS *)lParam;
 		printf("WINDOWPOS %p %p (%d %d %d %d) %X(",
 			info->hwnd, info->hwndInsertAfter, info->x, info->y, info->cx, info->cy, info->flags);
 		if (info->flags & SWP_NOSIZE)
@@ -214,7 +214,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		int width = LOWORD(lParam);
 		int height = HIWORD(lParam);
-		const char* stypes[]{ "SIZE_RESTORED","SIZE_MINIMIZED","SIZE_MAXIMIZED","SIZE_MAXSHOW","SIZE_MAXHIDE" };
+		const char *stypes[]{"SIZE_RESTORED","SIZE_MINIMIZED","SIZE_MAXIMIZED","SIZE_MAXSHOW","SIZE_MAXHIDE"};
 		printf("SIZE %X(%s) %dx%d\n", wParam, (wParam >= 0 && wParam <= 4) ? stypes[wParam] : "?", width, height);
 		break;
 	}
@@ -441,7 +441,7 @@ void TestContext::loop()
 }
 
 template<typename T>
-int VerboseRelease(T*& obj, const char* msg)
+int VerboseRelease(T *&obj, const char *msg)
 {
 	if (!obj)
 		return 0;
@@ -451,7 +451,7 @@ int VerboseRelease(T*& obj, const char* msg)
 	return c;
 }
 
-void printDDSDesc(const DDSURFACEDESC& ddsd)
+void printDDSDesc(const DDSURFACEDESC &ddsd)
 {
 	printf(" size %d flags %X", ddsd.dwSize, ddsd.dwFlags);
 	if (ddsd.dwFlags & DDSD_CAPS)
@@ -511,7 +511,7 @@ void printDDSDesc(const DDSURFACEDESC& ddsd)
 	putc('\n', stdout);
 	if (ddsd.dwFlags & DDSD_PIXELFORMAT)
 	{
-		const DDPIXELFORMAT& pf = ddsd.ddpfPixelFormat;
+		const DDPIXELFORMAT &pf = ddsd.ddpfPixelFormat;
 		printf("  pixelformat size %d flags %X", pf.dwSize, pf.dwFlags);
 		if (pf.dwFlags & DDPF_RGB)
 		{
@@ -540,7 +540,7 @@ void printDDSDesc(const DDSURFACEDESC& ddsd)
 		if (pf.dwFlags & DDPF_RGB)
 			printf("\n");
 		if (pf.dwFlags & DDPF_FOURCC)
-			printf("   FourCC \"%.4s\"\n", (const char*)&pf.dwFourCC);
+			printf("   FourCC \"%.4s\"\n", (const char *)&pf.dwFourCC);
 	}
 }
 
@@ -548,22 +548,22 @@ struct ddEnumContext_t
 {
 	int count = 0;
 	GUID selected{};
-	IDirectDraw* pdd = nullptr;
+	IDirectDraw *pdd = nullptr;
 };
 
 #if !defined(DIRECTDRAW_VERSION) || DIRECTDRAW_VERSION <= 0x0200
 #define DDCAPS_DX1 DDCAPS
 #endif
 
-BOOL WINAPI ddEnumCallbackA(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID lpContext)
+BOOL WINAPI ddEnumCallbackA(GUID FAR *lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID lpContext)
 {
 	printf("ddEnumCallback");
 	printf(" guid %p desc \"%s\" name \"%s\" context %p\n", lpGUID, lpDriverDescription, lpDriverName, lpContext);
-	ddEnumContext_t* ctx = (ddEnumContext_t*)lpContext;
+	ddEnumContext_t *ctx = (ddEnumContext_t *)lpContext;
 	ctx->count++;
 	if (lpGUID)
 	{
-		IDirectDraw* pdd = nullptr;
+		IDirectDraw *pdd = nullptr;
 		HRESULT	r = DirectDrawCreate(lpGUID, &pdd, nullptr);
 		printf("%d (%s) DirectDrawCreate %p\n", r, ddResultToStr(r).c_str(), pdd);
 		if (r != DD_OK)
@@ -574,7 +574,7 @@ BOOL WINAPI ddEnumCallbackA(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR l
 		DDCAPS_DX1 HELCaps{};
 		HELCaps.dwSize = sizeof(HELCaps);
 
-		r = pdd->GetCaps((DDCAPS*)&driverCaps, (DDCAPS*)&HELCaps);
+		r = pdd->GetCaps((DDCAPS *)&driverCaps, (DDCAPS *)&HELCaps);
 		printf("%d IDirectDraw::GetCaps\n", r);
 		if (r != DD_OK)
 			return DDENUMRET_OK;
@@ -595,20 +595,20 @@ BOOL WINAPI ddEnumCallbackA(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR l
 }
 
 #if 0
-BOOL WINAPI ddEnumCallbackW(GUID FAR* lpGUID, LPWSTR lpDriverDescription, LPWSTR lpDriverName, LPVOID lpContext)
+BOOL WINAPI ddEnumCallbackW(GUID FAR *lpGUID, LPWSTR lpDriverDescription, LPWSTR lpDriverName, LPVOID lpContext)
 {
 	printf("ddEnumCallback");
 	printf(" guid %p desc \"%ls\" name \"%ls\" context %p\n", lpGUID, lpDriverDescription, lpDriverName, lpContext);
-	ddEnumContext_t* ctx = (ddEnumContext_t*)lpContext;
+	ddEnumContext_t *ctx = (ddEnumContext_t *)lpContext;
 	ctx->count++;
 	return DDENUMRET_OK;
 }
 
-BOOL WINAPI ddEnumExCallback(GUID FAR* lpGUID, LPWSTR lpDriverDescription, LPWSTR lpDriverName, LPVOID lpContext, HMONITOR hm)
+BOOL WINAPI ddEnumExCallback(GUID FAR *lpGUID, LPWSTR lpDriverDescription, LPWSTR lpDriverName, LPVOID lpContext, HMONITOR hm)
 {
 	printf("ddEnumCallback");
 	printf(" guid %p desc \"%ls\" name \"%ls\" context %p monitor %p\n", lpGUID, lpDriverDescription, lpDriverName, lpContext, hm);
-	ddEnumContext_t* ctx = (ddEnumContext_t*)lpContext;
+	ddEnumContext_t *ctx = (ddEnumContext_t *)lpContext;
 	ctx->count++;
 	return DDENUMRET_OK;
 }
@@ -619,7 +619,7 @@ HRESULT WINAPI ddEnumModesCallback(LPDDSURFACEDESC lpDDSurfaceDesc, LPVOID lpCon
 	printf(" desc %p context %p\n", lpDDSurfaceDesc, lpContext);
 	if (lpDDSurfaceDesc)
 		printDDSDesc(*lpDDSurfaceDesc);
-	((int*)lpContext)[0]++;
+	((int *)lpContext)[0]++;
 	return DDENUMRET_OK;
 }
 
@@ -632,24 +632,24 @@ HRESULT WINAPI ddEnumSurfacesCallback(LPDIRECTDRAWSURFACE lpDDSurface, LPDDSURFA
 	VerboseRelease(lpDDSurface, "IDirectDrawSurface::Release Enum");
 	//if (lpDDSurface)
 	//	lpDDSurface->Release();
-	((int*)lpContext)[0]++;
+	((int *)lpContext)[0]++;
 	return DDENUMRET_OK;
 }
 
-HRESULT WINAPI d3dEnumDevicesCallback(GUID FAR* lpGuid, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC lpD3DHWDeviceDesc, LPD3DDEVICEDESC lpD3DHELDeviceDesc, LPVOID lpUserArg)
+HRESULT WINAPI d3dEnumDevicesCallback(GUID FAR *lpGuid, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC lpD3DHWDeviceDesc, LPD3DDEVICEDESC lpD3DHELDeviceDesc, LPVOID lpUserArg)
 {
 	printf(" guid %X desc \"%s\" name \"%s\" hwDesc %p helDesc %p user %p\n", lpGuid->Data1, lpDeviceDescription, lpDeviceName, lpD3DHWDeviceDesc, lpD3DHELDeviceDesc, lpUserArg);
-	printf("  flags %X %X, color model hw %d hel %d, MaxBufferSize hw %d hel %d\n",
+	printf("  flags %X %X, color model hw %d hel %d, MaxBufferSize hw %d hel %d\n", 
 		lpD3DHWDeviceDesc->dwFlags, lpD3DHELDeviceDesc->dwFlags,
 		lpD3DHWDeviceDesc->dcmColorModel, lpD3DHELDeviceDesc->dcmColorModel,
 		lpD3DHWDeviceDesc->dwMaxBufferSize, lpD3DHELDeviceDesc->dwMaxBufferSize);
-	((int*)lpUserArg)[0]++;
+	((int *)lpUserArg)[0]++;
 	return DDENUMRET_OK;
 }
 
 HRESULT WINAPI d3dEnumTexFmtCallback(LPDDSURFACEDESC lpDdsd, LPVOID lpContext)
 {
-	int& count = *(int*)lpContext;
+	int &count = *(int *)lpContext;
 	printf(" texFmt %d:", count);
 	if (lpDdsd)
 		printDDSDesc(*lpDdsd);
@@ -673,7 +673,7 @@ int TestContext::initDD()
 	if (ddrawdll)
 	{
 #if 0
-		typedef HRESULT(WINAPI* LPDIRECTDRAWENUMERATEW)(LPDDENUMCALLBACKW lpCallback, LPVOID lpContext);
+		typedef HRESULT(WINAPI *LPDIRECTDRAWENUMERATEW)(LPDDENUMCALLBACKW lpCallback, LPVOID lpContext);
 		LPDIRECTDRAWENUMERATEW pddEnumW = (LPDIRECTDRAWENUMERATEW)GetProcAddress(ddrawdll, "DirectDrawEnumerateW");
 		printf("proc DirectDrawEnumerateW = %p\n", pddEnumW);
 		if (pddEnumW)
@@ -726,7 +726,7 @@ int TestContext::initDD()
 	DDCAPS_DX1 HELCaps{};
 	HELCaps.dwSize = sizeof(HELCaps);
 
-	r = pdd->GetCaps((DDCAPS*)&driverCaps, (DDCAPS*)&HELCaps);
+	r = pdd->GetCaps((DDCAPS *)&driverCaps, (DDCAPS *)&HELCaps);
 	printf("%d IDirectDraw::GetCaps\n", r);
 	printf(" driver caps %X ddsc %X, vmem %u, FCCs %d\n", driverCaps.dwCaps, driverCaps.ddsCaps.dwCaps, driverCaps.dwVidMemTotal, driverCaps.dwNumFourCCCodes);
 	printf(" HEL caps %X ddsc %X, vmem %u, FCCs %d\n", HELCaps.dwCaps, HELCaps.ddsCaps.dwCaps, HELCaps.dwVidMemTotal, HELCaps.dwNumFourCCCodes);
@@ -814,7 +814,7 @@ int TestContext::initDD()
 		printf("\n");
 	}
 
-	r = pdd->QueryInterface(IID_IDirectDraw2, (void**)&pdd2);
+	r = pdd->QueryInterface(IID_IDirectDraw2, (void **)&pdd2);
 	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirectDraw2) %p\n", r, ddResultToStr(r).c_str(), pdd2);
 	if (pdd2)
 	{
@@ -827,7 +827,7 @@ int TestContext::initDD()
 	}
 #endif
 
-	r = pdd->QueryInterface(IID_IDirect3D, (void**)&pd3d);
+	r = pdd->QueryInterface(IID_IDirect3D, (void **)&pd3d);
 	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirect3D) %p\n", r, ddResultToStr(r).c_str(), pd3d);
 
 	if (pd3d)
@@ -914,7 +914,7 @@ int TestContext::initDD()
 	ddsd.dwHeight = 64;
 	//mip
 	{
-		//	ddsd.ddsCaps.dwCaps |= DDSCAPS_MIPMAP | DDSCAPS_COMPLEX;
+	//	ddsd.ddsCaps.dwCaps |= DDSCAPS_MIPMAP | DDSCAPS_COMPLEX;
 	}
 	//ddsd.dwWidth = 16;
 	//ddsd.dwHeight = 16;
@@ -938,7 +938,7 @@ int TestContext::initDD()
 			int pitch = ddsd.lPitch;
 			if (!pitch)
 				pitch = ddsd.dwWidth * 4;
-			char* dst = (char*)ddsd.lpSurface;
+			char *dst = (char *)ddsd.lpSurface;
 			if (dst)
 			{
 				for (int i = 0; i < (int)ddsd.dwHeight; i++)
@@ -1006,7 +1006,7 @@ int TestContext::initDD()
 			int pitch = ddsd.lPitch;
 			if (!pitch)
 				pitch = ddsd.dwWidth * 4;
-			char* dst = (char*)ddsd.lpSurface;
+			char *dst = (char *)ddsd.lpSurface;
 			if (dst)
 			{
 				for (int i = 0; i < (int)ddsd.dwHeight; i++)
@@ -1050,7 +1050,7 @@ int TestContext::initDD()
 
 #if 0
 	{
-		IDirectDrawSurface* pddsGDI = nullptr;
+		IDirectDrawSurface *pddsGDI = nullptr;
 		r = pdd->GetGDISurface(&pddsGDI);
 		printf("%d (%s) IDirectDraw::GetGDISurface %p\n", r, ddResultToStr(r).c_str(), pddsGDI);
 		VerboseRelease(pddsGDI, "IDirectDrawSurface::Release GDI");
@@ -1074,7 +1074,7 @@ HRESULT TestContext::d3dSetState(D3DOPCODE op, int state_type, DWORD value)
 	ebd.dwSize = sizeof(ebd);
 	ebd.dwFlags = D3DDEB_BUFSIZE;
 	ebd.dwBufferSize = size;
-	IDirect3DExecuteBuffer* peb = nullptr;
+	IDirect3DExecuteBuffer *peb = nullptr;
 	HRESULT r = pd3dd->CreateExecuteBuffer(&ebd, &peb, nullptr);
 	printf("%d (%s) IDirect3DDevice::CreateExecuteBuffer %p\n", r, ddResultToStr(r).c_str(), peb);
 
@@ -1085,7 +1085,7 @@ HRESULT TestContext::d3dSetState(D3DOPCODE op, int state_type, DWORD value)
 		r = peb->Lock(&ebDesc);
 		printf("%d (%s) IDirect3DExecuteBuffer::Lock %p\n", r, ddResultToStr(r).c_str(), ebDesc.lpData);
 
-		void* cur = ebDesc.lpData;
+		void *cur = ebDesc.lpData;
 
 		PUTD3DINSTRUCTION(op, sizeof(D3DSTATE), 1, cur);
 		STATE_DATA(state_type, value, cur);
@@ -1093,10 +1093,10 @@ HRESULT TestContext::d3dSetState(D3DOPCODE op, int state_type, DWORD value)
 
 		D3DEXECUTEDATA exData{};
 		exData.dwSize = sizeof(exData);
-		exData.dwInstructionLength = ((char*)cur - (char*)ebDesc.lpData);
+		exData.dwInstructionLength = ((char *)cur - (char *)ebDesc.lpData);
 
 		r = peb->Unlock();
-		printf("%d (%s) IDirect3DExecuteBuffer::Unlock %d/%d\n", r, ddResultToStr(r).c_str(), int((char*)cur - (char*)ebDesc.lpData), ebDesc.dwBufferSize);
+		printf("%d (%s) IDirect3DExecuteBuffer::Unlock %d/%d\n", r, ddResultToStr(r).c_str(), int((char *)cur - (char *)ebDesc.lpData), ebDesc.dwBufferSize);
 
 		r = peb->SetExecuteData(&exData);
 		printf("%d (%s) IDirect3DExecuteBuffer::SetExecuteData\n", r, ddResultToStr(r).c_str());
@@ -1115,7 +1115,7 @@ HRESULT TestContext::d3dSetState(D3DOPCODE op, int state_type, DWORD value)
 	return r;
 }
 
-int testTLTriangle(const D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData)
+int testTLTriangle(const D3DEXECUTEBUFFERDESC &ebDesc, D3DEXECUTEDATA &exData)
 {
 	const int vertsNum = 7;
 
@@ -1161,10 +1161,10 @@ int testTLTriangle(const D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData)
 	lines[2].v1 = 6;
 	lines[2].v2 = 4;
 
-	void* cur = ebDesc.lpData;
+	void *cur = ebDesc.lpData;
 
 	VERTEX_DATA(verts, vertsNum, cur);
-	void* insStart = cur;
+	void *insStart = cur;
 	OP_PROCESS_VERTICES(1, cur);
 	PROCESSVERTICES_DATA(D3DPROCESSVERTICES_COPY | D3DPROCESSVERTICES_UPDATEEXTENTS, 0, vertsNum, cur);
 	if (QWORD_ALIGNED(cur)) {
@@ -1187,13 +1187,13 @@ int testTLTriangle(const D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData)
 
 	exData.dwVertexCount = vertsNum;
 	exData.dwVertexOffset = 0;
-	exData.dwInstructionOffset = ((char*)insStart - (char*)ebDesc.lpData);
-	exData.dwInstructionLength = ((char*)cur - (char*)insStart);
+	exData.dwInstructionOffset = ((char *)insStart - (char *)ebDesc.lpData);
+	exData.dwInstructionLength = ((char *)cur - (char *)insStart);
 
-	return (char*)cur - (char*)ebDesc.lpData;
+	return (char *)cur - (char *)ebDesc.lpData;
 }
 
-int testLTriangle(D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData)
+int testLTriangle(D3DEXECUTEBUFFERDESC &ebDesc, D3DEXECUTEDATA &exData)
 {
 	const int vertsNum = 7;
 
@@ -1235,10 +1235,10 @@ int testLTriangle(D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData)
 	lines[2].v1 = 6;
 	lines[2].v2 = 4;
 
-	void* cur = ebDesc.lpData;
+	void *cur = ebDesc.lpData;
 
 	VERTEX_DATA(verts, vertsNum, cur);
-	void* insStart = cur;
+	void *insStart = cur;
 	OP_PROCESS_VERTICES(1, cur);
 	PROCESSVERTICES_DATA(D3DPROCESSVERTICES_TRANSFORM | D3DPROCESSVERTICES_UPDATEEXTENTS, 0, vertsNum, cur);
 	if (QWORD_ALIGNED(cur)) {
@@ -1262,13 +1262,13 @@ int testLTriangle(D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData)
 
 	exData.dwVertexCount = vertsNum;
 	exData.dwVertexOffset = 0;
-	exData.dwInstructionOffset = ((char*)insStart - (char*)ebDesc.lpData);
-	exData.dwInstructionLength = ((char*)cur - (char*)insStart);
+	exData.dwInstructionOffset = ((char *)insStart - (char *)ebDesc.lpData);
+	exData.dwInstructionLength = ((char *)cur - (char *)insStart);
 
-	return (char*)cur - (char*)ebDesc.lpData;
+	return (char *)cur - (char *)ebDesc.lpData;
 }
 
-int testTexturedTriangle(D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData, D3DTEXTUREHANDLE texHandle)
+int testTexturedTriangle(D3DEXECUTEBUFFERDESC &ebDesc, D3DEXECUTEDATA &exData, D3DTEXTUREHANDLE texHandle)
 {
 	const int vertsNum = 3;
 
@@ -1296,10 +1296,10 @@ int testTexturedTriangle(D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData, D
 	tri.v3 = 2;
 	tri.wFlags = D3DTRIFLAG_EDGEENABLETRIANGLE;
 
-	void* cur = ebDesc.lpData;
+	void *cur = ebDesc.lpData;
 
 	VERTEX_DATA(verts, vertsNum, cur);
-	void* insStart = cur;
+	void *insStart = cur;
 	OP_PROCESS_VERTICES(1, cur);
 	PROCESSVERTICES_DATA(D3DPROCESSVERTICES_TRANSFORM | D3DPROCESSVERTICES_UPDATEEXTENTS, 0, vertsNum, cur);
 	if (QWORD_ALIGNED(cur)) {
@@ -1317,10 +1317,10 @@ int testTexturedTriangle(D3DEXECUTEBUFFERDESC& ebDesc, D3DEXECUTEDATA& exData, D
 
 	exData.dwVertexCount = vertsNum;
 	exData.dwVertexOffset = 0;
-	exData.dwInstructionOffset = ((char*)insStart - (char*)ebDesc.lpData);
-	exData.dwInstructionLength = ((char*)cur - (char*)insStart);
+	exData.dwInstructionOffset = ((char *)insStart - (char *)ebDesc.lpData);
+	exData.dwInstructionLength = ((char *)cur - (char *)insStart);
 
-	return (char*)cur - (char*)ebDesc.lpData;
+	return (char *)cur - (char *)ebDesc.lpData;
 }
 
 int TestContext::initD3D()
@@ -1346,11 +1346,11 @@ int TestContext::initD3D()
 	r = pd3d->FindDevice(&search, &result);
 	printf("%d (%s) IDirect3D::FindDevice %X\n", r, ddResultToStr(r).c_str(), result.guid.Data1);
 
-	IDirectDrawSurface* surf = pddsBack;
+	IDirectDrawSurface *surf = pddsBack;
 
 	if (pddsBack)
 	{
-		r = pddsBack->QueryInterface(result.guid, (void**)&pd3dd);
+		r = pddsBack->QueryInterface(result.guid, (void **)&pd3dd);
 		printf("%d (%s) IDirectDrawSurface::QueryInterface(IID_IDirect3DDevice) BACK %p\n", r, ddResultToStr(r).c_str(), pd3dd);
 	}
 
@@ -1358,7 +1358,7 @@ int TestContext::initD3D()
 	if (!pd3dd && pdds1)
 	{
 		surf = pdds1;
-		r = pdds1->QueryInterface(IID_IDirect3DDevice, (void**)&pd3dd);
+		r = pdds1->QueryInterface(IID_IDirect3DDevice, (void **)&pd3dd);
 		printf("%d (%s) IDirectDrawSurface::QueryInterface(IID_IDirect3DDevice) OFFSCREEN %p\n", r, ddResultToStr(r).c_str(), pd3dd);
 	}
 #endif
@@ -1378,7 +1378,7 @@ int TestContext::initD3D()
 #if 1
 	if (pddsTex)
 	{
-		r = pddsTex->QueryInterface(IID_IDirect3DTexture, (void**)&pd3dTex);
+		r = pddsTex->QueryInterface(IID_IDirect3DTexture, (void **)&pd3dTex);
 		printf("%d (%s) IDirectDrawSurface::QueryInterface(IID_IDirect3DTexture) %p\n", r, ddResultToStr(r).c_str(), pd3dTex);
 
 		int count = 0;
