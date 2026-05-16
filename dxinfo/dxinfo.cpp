@@ -1118,37 +1118,47 @@ int main()
 		};
 
 	int count = 0;
+
+	printf("\nDX2:\n");
+	IDirect3D *pd3d = nullptr;
+	r = pdd->QueryInterface(IID_IDirect3D, (void **)&pd3d);
+	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirect3D) %p\n", r, ddResultToStr(r).c_str(), pd3d);
+	if (pd3d)
+	{
+		count = 0;
+		r = pd3d->EnumDevices(enumDevices, &count);
+		printf("%d (%s) IDirect3D::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
+		VerboseRelease(pd3d, "IDirect3D");
+	}
+
+#if(DIRECT3D_VERSION >= 0x0500)
+	printf("\nDX5:\n");
+	IDirect3D2 *pd3d2 = nullptr;
+	r = pdd->QueryInterface(IID_IDirect3D2, (void **)&pd3d2);
+	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirect3D2) %p\n", r, ddResultToStr(r).c_str(), pd3d2);
+	if (pd3d2)
+	{
+		count = 0;
+		r = pd3d2->EnumDevices(enumDevices, &count);
+		printf("%d (%s) IDirect3D2::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
+		VerboseRelease(pd3d2, "IDirect3D2");
+	}
+#endif
+
 #if(DIRECT3D_VERSION >= 0x0600)
-	printf("DX6:\n");
+	printf("\nDX6:\n");
 	IDirect3D3* pd3d3 = nullptr;
 	r = pdd->QueryInterface(IID_IDirect3D3, (void**)&pd3d3);
 	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirect3D3) %p\n", r, ddResultToStr(r).c_str(), pd3d3);
 	if (pd3d3)
 	{
+		count = 0;
 		r = pd3d3->EnumDevices(enumDevices, &count);
 		printf("%d (%s) D3D3::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
 		VerboseRelease(pd3d3, "IDirect3D3");
 	}
 #endif
-#if(DIRECT3D_VERSION >= 0x0500)
-	printf("DX5:\n");
-	IDirect3D2* pd3d = nullptr;
-	r = pdd->QueryInterface(IID_IDirect3D2, (void**)&pd3d);
-	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirect3D2) %p\n", r, ddResultToStr(r).c_str(), pd3d);
-#else
-	printf("DX2:\n");
-	IDirect3D* pd3d = nullptr;
-	r = pdd->QueryInterface(IID_IDirect3D, (void**)&pd3d);
-	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirect3D) %p\n", r, ddResultToStr(r).c_str(), pd3d);
-#endif
-	if (!pd3d || r != DD_OK)
-		return -1;
 
-	count = 0;
-	r = pd3d->EnumDevices(enumDevices, &count);
-	printf("%d (%s) D3D::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
-
-	VerboseRelease(pd3d, "IDirect3D");
 	VerboseRelease(pdd, "IDirectDraw");
 
 	return 0;
