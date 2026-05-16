@@ -14,14 +14,14 @@ struct TestContext
 	HWND window;
 	bool fullscreen = false;
 	bool shouldClose = false;
-	IDirectDraw* pdd = nullptr;
-	IDirect3D* pd3d = nullptr;
-	IDirectDrawSurface* pddsPrimary = nullptr;
-	IDirectDrawSurface* pddsBack = nullptr;
-	IDirectDrawClipper* pddClipper = nullptr;
-	IDirect3DDevice* pd3dd = nullptr;
-	IDirect3DViewport* pd3dViewport = nullptr;
-	IDirect3DExecuteBuffer* pd3deb = nullptr;
+	IDirectDraw *pdd = nullptr;
+	IDirect3D *pd3d = nullptr;
+	IDirectDrawSurface *pddsPrimary = nullptr;
+	IDirectDrawSurface *pddsBack = nullptr;
+	IDirectDrawClipper *pddClipper = nullptr;
+	IDirect3DDevice *pd3dd = nullptr;
+	IDirect3DViewport *pd3dViewport = nullptr;
+	IDirect3DExecuteBuffer *pd3deb = nullptr;
 
 	bool initWin(int w, int h, bool fullscreen);
 	int initDD();
@@ -35,15 +35,15 @@ struct TestContext
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	TestContext* ctx = nullptr;
+	TestContext *ctx = nullptr;
 	if (uMsg == WM_NCCREATE)
 	{
-		ctx = (TestContext*)((CREATESTRUCT*)lParam)->lpCreateParams;
+		ctx = (TestContext *)((CREATESTRUCT *)lParam)->lpCreateParams;
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)ctx);
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 
-	ctx = (TestContext*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	ctx = (TestContext *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
 	switch (uMsg) {
 	case WM_DESTROY:
@@ -215,7 +215,7 @@ int TestContext::initDD()
 
 	int count = 0;
 
-	r = pdd->QueryInterface(IID_IDirect3D, (void**)&pd3d);
+	r = pdd->QueryInterface(IID_IDirect3D, (void **)&pd3d);
 	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirect3D) %p\n", r, ddResultToStr(r).c_str(), pd3d);
 
 	//create surfaces
@@ -276,7 +276,7 @@ int TestContext::initDD()
 }
 
 template<typename T>
-int VerboseRelease(T*& obj, const char* msg)
+int VerboseRelease(T *&obj, const char *msg)
 {
 	if (!obj)
 		return 0;
@@ -303,11 +303,11 @@ int TestContext::initD3D()
 	r = pd3d->FindDevice(&search, &result);
 	printf("%d (%s) IDirect3D::FindDevice %X\n", r, ddResultToStr(r).c_str(), result.guid.Data1);
 
-	IDirectDrawSurface* surf = pddsBack;
+	IDirectDrawSurface *surf = pddsBack;
 
 	if (pddsBack)
 	{
-		r = pddsBack->QueryInterface(result.guid, (void**)&pd3dd);
+		r = pddsBack->QueryInterface(result.guid, (void **)&pd3dd);
 		printf("%d (%s) IDirectDrawSurface::QueryInterface(IID_IDirect3DDevice) BACK %p\n", r, ddResultToStr(r).c_str(), pd3dd);
 	}
 
@@ -357,7 +357,7 @@ int TestContext::initD3D()
 		r = pd3deb->Lock(&ebDesc);
 		printf("%d (%s) IDirect3DExecuteBuffer::Lock %p\n", r, ddResultToStr(r).c_str(), ebDesc.lpData);
 
-		void* cur = ebDesc.lpData;
+		void *cur = ebDesc.lpData;
 
 		D3DTLVERTEX verts[3]{};
 		D3DTRIANGLE tri{};
@@ -383,7 +383,7 @@ int TestContext::initD3D()
 		tri.wFlags = D3DTRIFLAG_EDGEENABLETRIANGLE;
 
 		VERTEX_DATA(verts, 3, cur);
-		void* insStart = cur;
+		void *insStart = cur;
 		OP_PROCESS_VERTICES(1, cur);
 		PROCESSVERTICES_DATA(D3DPROCESSVERTICES_COPY | D3DPROCESSVERTICES_UPDATEEXTENTS, 0, 3, cur);
 		if (QWORD_ALIGNED(cur)) {
@@ -400,8 +400,8 @@ int TestContext::initD3D()
 		exData.dwSize = sizeof(exData);
 		exData.dwVertexCount = 3;
 		exData.dwVertexOffset = 0;
-		exData.dwInstructionOffset = ((char*)insStart - (char*)ebDesc.lpData);
-		exData.dwInstructionLength = ((char*)cur - (char*)insStart);
+		exData.dwInstructionOffset = ((char *)insStart - (char *)ebDesc.lpData);
+		exData.dwInstructionLength = ((char *)cur - (char *)insStart);
 		r = pd3deb->SetExecuteData(&exData);
 		printf("%d (%s) IDirect3DExecuteBuffer::SetExecuteData\n", r, ddResultToStr(r).c_str());
 	}
