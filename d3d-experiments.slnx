@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/triangles/">
+    <Project Path="triangles/d3d2_triangle.vcxproj" Id="1ac3a92d-fff5-4571-8907-1ec1f3c9c316" />
+    <Project Path="triangles/d3d5_triangle.vcxproj" Id="397aca00-89be-4e45-9d77-a2c892b1d609" />
+    <Project Path="triangles/d3d6_triangle.vcxproj" Id="37f1d8f0-159a-4009-ad0f-d6ee3fe43a61" />
+    <Project Path="triangles/d3d7_triangle.vcxproj" Id="5784dab2-aba4-40a9-8660-0f5716d224f1" />
+  </Folder>
+  <Project Path="dx2_test/dx2_test.vcxproj" Id="de6db48d-16da-4c55-ab9a-bb43e9b396ae" />
+  <Project Path="dx8_test/dx8_test.vcxproj" Id="666df178-603b-4e9c-9a5c-e1f6e1b3e237" />
+  <Project Path="dxinfo/dxinfo.vcxproj" Id="cd934b94-93ea-4f33-b1e2-9b1f5179d961" />
+  <Project Path="dx_test/dx_test.vcxproj" Id="46a9b552-2f7c-4c5d-9584-cd9620e4282b" />
+</Solution>
