@@ -59,6 +59,7 @@ struct TestContext
 	int initD3D();
 	void loop();
 	void draw();
+	void present();
 	void onWinDestroy();
 	void shutdownWin();
 	void shutdownDD();
@@ -245,8 +246,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_TIMER:
 	{
-		//if (ctx)
-		//	ctx->draw();
+		if (ctx)
+			ctx->draw();
 		break;
 	}
 #if 1
@@ -257,8 +258,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		if (!dc)
 			return 0;
 
-		//if (ctx)
-		//	ctx->draw();
+		if (ctx)
+			ctx->draw();
 		BOOL r = EndPaint(hWnd, &paint);
 		return 0;
 	}
@@ -294,15 +295,15 @@ bool TestContext::initWin(int w, int h, bool fs)
 	printf("RegisterClass = %X\n", wc);
 	if (!wc)
 		return true;
-	window = CreateWindowEx(exStyle, class_name, TEXT("DX test"), style | WS_VISIBLE,
+	window = CreateWindowEx(exStyle, class_name, TEXT("DX test"), style,
 		CW_USEDEFAULT, CW_USEDEFAULT, winSize.right - winSize.left, winSize.bottom - winSize.top, nullptr, nullptr, inst, this);
 	printf("CreateWindowEx = %p\n", window);
 	if (!window)
 		return true;
-	//r = ShowWindow(window, SW_SHOW);
-	//printf("ShowWindow = %d\n", r);
-	//r = UpdateWindow(window);
-	//printf("UpdateWindow = %d\n", r);
+	r = ShowWindow(window, SW_SHOW);
+	printf("ShowWindow = %d\n", r);
+	r = UpdateWindow(window);
+	printf("UpdateWindow = %d\n", r);
 
 	return false;
 }
@@ -411,33 +412,30 @@ void TestContext::loop()
 			DispatchMessage(&msg);
 		}
 
-		if (!pddsPrimary)
-			continue;
-
 		//InvalidateRect(window, nullptr, false);
-		//draw();
-
-		HWND win = window;
-		int winWidth = 640;
-		int winHeight = 480;
-		RECT dstRect{};
-		GetClientRect(win, &dstRect);
-		POINT point{ 0,0 };
-		ClientToScreen(win, &point);
-		OffsetRect(&dstRect, point.x, point.y);
-
-		RECT srcRect{ 0,0, winWidth, winHeight };
-		//printRect("src", srcRect);
-		//printRect("dst", dstRect);
-		HRESULT r = pddsPrimary->Blt(&dstRect, pddsBack, &srcRect, DDBLT_WAIT, nullptr);
-
-		DDBLTFX bltFx{ 0 };
-		bltFx.dwSize = sizeof(bltFx);
-		bltFx.dwFillColor = RGB(127, 50, 70);
-		//HRESULT r = pddsPrimary->Blt(&dstRect, nullptr, nullptr, DDBLT_WAIT | DDBLT_COLORFILL, &bltFx);
-		if(r)
-			printf("%d (%s) Blt\n", r, ddResultToStr(r).c_str());
 	}
+}
+
+void TestContext::present()
+{
+	SIZE renderSize{};
+	DDSURFACEDESC desc{};
+	desc.dwSize = sizeof(desc);
+	desc.dwFlags = DDSD_WIDTH | DDSD_HEIGHT;
+	pddsBack->GetSurfaceDesc(&desc);
+	renderSize.cx = desc.dwWidth;
+	renderSize.cy = desc.dwHeight;
+
+	RECT dstRect{};
+	GetClientRect(window, &dstRect);
+	POINT point{ 0,0 };
+	ClientToScreen(window, &point);
+	OffsetRect(&dstRect, point.x, point.y);
+
+	RECT srcRect{ 0,0,renderSize.cx,renderSize.cy };
+	HRESULT r = pddsPrimary->Blt(&dstRect, pddsBack, &srcRect, DDBLT_WAIT, nullptr);
+	if (r)
+		printf("%d (%s) Blt\n", r, ddResultToStr(r).c_str());
 }
 
 template<typename T>
@@ -1308,7 +1306,7 @@ int testTexturedTriangle(D3DEXECUTEBUFFERDESC &ebDesc, D3DEXECUTEDATA &exData, D
 
 	OP_STATE_RENDER(2, cur);
 	STATE_DATA(D3DRENDERSTATE_TEXTUREHANDLE, texHandle, cur);
-	STATE_DATA(D3DRENDERSTATE_TEXTUREMAPBLEND, D3DTBLEND_DECAL, cur);
+	STATE_DATA(D3DRENDERSTATE_TEXTUREMAPBLEND, D3DTBLEND_COPY, cur);
 
 	OP_TRIANGLE_LIST(1, cur);
 	TRIANGLE_LIST_DATA(&tri, 1, cur);
@@ -1513,37 +1511,23 @@ void TestContext::draw()
 	if (r) printf("%d (%s) IDirect3DDevice::EndScene\n", r, ddResultToStr(r).c_str());
 	//
 
-	SIZE renderSize{};
+#if 0
 	DDSURFACEDESC desc{};
 	desc.dwSize = sizeof(desc);
 	desc.dwFlags = DDSD_WIDTH | DDSD_HEIGHT;
 	pddsBack->GetSurfaceDesc(&desc);
-	renderSize.cx = desc.dwWidth;
-	renderSize.cy = desc.dwHeight;
 
-	RECT dstRect{};
-	POINT point{ 0,0 };
-	ClientToScreen(window, &point);
-	GetClientRect(window, &dstRect);
-	//renderSize.cx = dstRect.right;
-	//renderSize.cy = dstRect.bottom;
-	OffsetRect(&dstRect, point.x, point.y);
-
-#if 0
-	//
-	RECT dRect{ (frame * 65) % renderSize.cx, 50 };
+	RECT dRect{ (frame * 65) % desc.dwWidth, 50 };
 	dRect.right = dRect.left + 64;
 	dRect.bottom = dRect.top + 64;
 	DDBLTFX bltFx{ 0 };
 	bltFx.dwSize = sizeof(bltFx);
 	bltFx.dwFillColor = RGB((frame * 15) % 255, (frame * 27) % 255, 110);
 	pddsBack->Blt(&dRect, nullptr, nullptr, DDBLT_WAIT | DDBLT_COLORFILL, &bltFx);
-	//
 #endif
 	frame++;
 
-	RECT srcRect{ 0,0,renderSize.cx,renderSize.cy };
-	pddsPrimary->Blt(&dstRect, pddsBack, &srcRect, DDBLT_WAIT, NULL);
+	present();
 }
 
 void TestContext::shutdownD3D()
