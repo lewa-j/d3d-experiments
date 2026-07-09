@@ -24,12 +24,6 @@ typedef unsigned long D3DCOLORMODEL;
 
 #include <d3d.h>
 
-//#ifndef DDCAPS_DX1
-//#define DDCAPS_DX1 DDCAPS_DX3
-//#endif
-
-//#pragma comment(lib, "ddraw.lib")
-
 std::string ddResultToStr(HRESULT r)
 {
 	if (r == DD_OK)
@@ -90,14 +84,7 @@ int VerboseRelease(T*& obj, const char* name)
 //removed in dx7
 #undef DDSCAPS_PRIMARYSURFACELEFT
 #define DDSCAPS_PRIMARYSURFACELEFT 0x00000400l
-//removed in dx7
-#ifndef DDCAPS_STEREOVIEW
-#define DDCAPS_STEREOVIEW 0x00040000l
-#endif
-//added in dx8
-#ifndef DDCAPS2_PUREHAL
-#define DDCAPS2_PUREHAL 0x08000000L
-#endif
+
 //removed in dx7
 #ifndef DDSVCAPS_ENIGMA
 #define DDSVCAPS_ENIGMA 0x00000001l
@@ -263,7 +250,11 @@ void printPixelFormat(const char* name, DDPIXELFORMAT& pf)
 		printf(" FOURCC %X %.4s", pf.dwFourCC, (const char*)&pf.dwFourCC);
 
 	if (pf.dwFlags & DDPF_BUMPDUDV)
-		printf(" BUMPDUDV %dbits u%X v%X", pf.dwBumpBitCount, pf.dwBumpDuBitMask, pf.dwBumpDvBitMask);
+	{
+		printf(" BUMPDUDV%s %dbits u%X v%X", (pf.dwFlags & DDPF_BUMPLUMINANCE) ? " LUMINANCE" : "", pf.dwBumpBitCount, pf.dwBumpDuBitMask, pf.dwBumpDvBitMask);
+		if (pf.dwFlags & DDPF_BUMPLUMINANCE)
+			printf(" a%X", pf.dwBumpLuminanceBitMask);
+	}
 
 	DWORD handledBits = DDPF_ALPHA | DDPF_FOURCC | DDPF_RGB | DDPF_ZBUFFER | DDPF_STENCILBUFFER | DDPF_LUMINANCE | DDPF_BUMPDUDV;
 
@@ -271,6 +262,8 @@ void printPixelFormat(const char* name, DDPIXELFORMAT& pf)
 		handledBits |= DDPF_ALPHAPIXELS;
 	if (pf.dwFlags & DDPF_RGB)
 		handledBits |= DDPF_PALETTEINDEXED4 | DDPF_PALETTEINDEXED8;
+	if (pf.dwFlags & DDPF_BUMPDUDV)
+		handledBits |= DDPF_BUMPLUMINANCE;
 
 	if (pf.dwFlags & ~handledBits)
 		printf(" Unknown flags %X", pf.dwFlags & ~handledBits);
@@ -278,13 +271,14 @@ void printPixelFormat(const char* name, DDPIXELFORMAT& pf)
 	printf("\n");
 }
 
-//dx6 only
-#ifndef DDFXCAPS_BLTTRANSFORM
-#define DDFXCAPS_BLTTRANSFORM 0x00000002l
-#endif
 //removed in dx7
-#undef DDPCAPS_INITIALIZE
-#define DDPCAPS_INITIALIZE 0x00000008l
+#ifndef DDCAPS_STEREOVIEW
+#define DDCAPS_STEREOVIEW 0x00040000l
+#endif
+//added in dx8
+#ifndef DDCAPS2_PUREHAL
+#define DDCAPS2_PUREHAL 0x08000000L
+#endif
 
 void printDDCapsFlags(const char *name, DWORD c)
 {
@@ -404,6 +398,12 @@ void printColorKeyCaps(const char *name, DWORD c)
 	printf(")\n");
 }
 
+
+//dx6 only
+#ifndef DDFXCAPS_BLTTRANSFORM
+#define DDFXCAPS_BLTTRANSFORM 0x00000002l
+#endif
+
 void printFXCaps(const char *name, DWORD c)
 {
 	printf("%s %X(", name, c);
@@ -475,6 +475,10 @@ void printBitDepth(const char *name, DWORD c)
 	printf(")\n");
 }
 
+//removed in dx7
+#undef DDPCAPS_INITIALIZE
+#define DDPCAPS_INITIALIZE 0x00000008l
+
 void printDD1Caps(DDCAPS_DX1& c)
 {
 	printDDCapsFlags(" Caps", c.dwCaps);
@@ -531,7 +535,7 @@ void printDD1Caps(DDCAPS_DX1& c)
 #undef X
 	printf(")\n");
 	
-	printf(" AlphaBltConstBitDepths %X AlphaBltPixelBitDepths %X AlphaBltSurfaceBitDepths %X AlphaOverlayConstBitDepths %X AlphaOverlayPixelBitDepths %X AlphaOverlaySurfaceBitDepths\n",
+	printf(" AlphaBltConstBitDepths %X AlphaBltPixelBitDepths %X AlphaBltSurfaceBitDepths %X AlphaOverlayConstBitDepths %X AlphaOverlayPixelBitDepths %X AlphaOverlaySurfaceBitDepths %X\n",
 		c.dwAlphaBltConstBitDepths, c.dwAlphaBltPixelBitDepths, c.dwAlphaBltSurfaceBitDepths, c.dwAlphaOverlayConstBitDepths, c.dwAlphaOverlayPixelBitDepths, c.dwAlphaOverlaySurfaceBitDepths);
 	printBitDepth(" ZBufferBitDepths", c.dwZBufferBitDepths);
 	printf(" VidMemTotal %u VidMemFree %u\n", c.dwVidMemTotal, c.dwVidMemFree);
