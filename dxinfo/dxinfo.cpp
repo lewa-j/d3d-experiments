@@ -1,12 +1,20 @@
 
-#include <stdio.h>
+#if (_MSC_VER > 1100)//TODO test newer versions
 #include <inttypes.h>
+#else
+#define uint64_t unsigned __int64
+#define PRIX64 "I64x" 
+#define nullptr NULL
+#define snprintf _snprintf
+#endif
+
+#include <stdio.h>
 #include <string>
 #include <vector>
 
-#define INITGUID
 #define DIRECTDRAW_VERSION 0x0700
 #define DIRECT3D_VERSION 0x0700
+#define INITGUID
 
 #if(DIRECT3D_VERSION < 0x0500)
 #define D3DCOLOR_MONO   1
@@ -16,7 +24,11 @@ typedef unsigned long D3DCOLORMODEL;
 
 #include <d3d.h>
 
-#pragma comment(lib, "ddraw.lib")
+//#ifndef DDCAPS_DX1
+//#define DDCAPS_DX1 DDCAPS_DX3
+//#endif
+
+//#pragma comment(lib, "ddraw.lib")
 
 std::string ddResultToStr(HRESULT r)
 {
@@ -54,7 +66,7 @@ std::string ddResultToStr(HRESULT r)
 	int sev = (r >> 31) & 1;
 	int fac = (r >> 16) & 0x7FFF;
 	int code = r & 0xFFFF;
-	char buff[256]{};
+	char buff[256] = { 0 };
 	snprintf(buff, 255, "%d 0x%X %d", sev, fac, code);
 	return std::string(buff);
 }
@@ -81,6 +93,13 @@ int VerboseRelease(T*& obj, const char* name)
 #define DDSVCAPS_FLICKER 0x00000002l
 #define DDSVCAPS_REDBLUE 0x00000004l
 #define DDSVCAPS_SPLIT 0x00000008l
+#endif
+#ifndef DDSVCAPS_STEREOSEQUENTIAL
+#define DDSVCAPS_STEREOSEQUENTIAL 0x00000010l
+#endif
+
+#ifndef DDFXCAPS_OVERLAYDEINTERLACE
+#define DDFXCAPS_OVERLAYDEINTERLACE 0x20000000l
 #endif
 
 #undef DDSCAPS_PRIMARYSURFACELEFT
@@ -443,6 +462,15 @@ void printD3DBlendCaps(const char* name, DWORD c)
 	printf(")\n");
 }
 
+#ifndef D3DPRASTERCAPS_ZFOG
+#define D3DPRASTERCAPS_ZFOG 0x00200000L
+#endif
+
+#ifndef D3DPTEXTURECAPS_NONPOW2CONDITIONAL
+#define D3DPTEXTURECAPS_NONPOW2CONDITIONAL 0x00000100L
+#endif
+
+
 void printD3DPrimCaps(const char* name, const D3DPRIMCAPS& c)
 {
 	printf(" %s size %d\n", name, c.dwSize);
@@ -630,6 +658,10 @@ void printD3DPrimCaps(const char* name, const D3DPRIMCAPS& c)
 	printf("  Stipple %dx%d\n", c.dwStippleWidth, c.dwStippleHeight);
 }
 
+#ifndef D3DDEVCAPS_DRAWPRIMITIVES2EX
+#define D3DDEVCAPS_DRAWPRIMITIVES2EX 0x00008000L
+#endif
+
 void printD3DDCaps(const char* name, const D3DDEVICEDESC &c)
 {
 	printf("%s caps: flags %X\n", name, c.dwFlags);
@@ -696,6 +728,172 @@ void printD3DDCaps(const char* name, const D3DDEVICEDESC &c)
 #endif /* DIRECT3D_VERSION >= 0x0500 */
 }
 
+HRESULT CALLBACK enumModes (LPDDSURFACEDESC lpDDSDesc, LPVOID lpContext)
+{
+	printf(" %2d: %dx%d %dHz %dbit\n", *(int*)lpContext, lpDDSDesc->dwWidth, lpDDSDesc->dwHeight, lpDDSDesc->dwRefreshRate, lpDDSDesc->ddpfPixelFormat.dwRGBBitCount);
+	printf("  flags %X pitch %d ", lpDDSDesc->dwFlags, lpDDSDesc->lPitch);
+	printPixelFormat("pf", lpDDSDesc->ddpfPixelFormat);
+	(*(int*)lpContext)++;
+	return DDENUMRET_OK;
+}
+
+HRESULT CALLBACK enumSurf(LPDIRECTDRAWSURFACE lpDDSurface, LPDDSURFACEDESC lpDesc, LPVOID lpContext)
+{
+	printf(" %d: surf %p desc %p\n", *(int*)lpContext, lpDDSurface, lpDesc);
+	if (lpDesc)
+	{
+		printf("  desc: flags %X caps %X size %dx%d pitch %d\n", lpDesc->dwFlags, lpDesc->ddsCaps.dwCaps, lpDesc->dwWidth, lpDesc->dwHeight, lpDesc->lPitch);
+		printPixelFormat("  pf", lpDesc->ddpfPixelFormat);
+
+	}
+	if (lpDDSurface)
+		VerboseRelease(lpDDSurface, "IDirectDrawSurface");
+	(*(int*)lpContext)++;
+	return DDENUMRET_OK;
+}
+
+HRESULT CALLBACK enumDevicesPrint(GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID lpContext)
+{
+	uint64_t guid[2] = { 0 };
+	if (lpGUID)
+		memcpy(guid, lpGUID, sizeof(GUID));
+
+	printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
+
+	(*(int*)lpContext)++;
+	return DDENUMRET_OK;
+}
+
+struct enum1ctx
+{
+	int count;
+	IDirectDraw* pdd;
+	IDirect3D* pd3d;
+};
+
+HRESULT CALLBACK enumDDSD(LPDDSURFACEDESC lpDdsd, LPVOID lpContext)
+{
+	printf(" size %d flags %X", lpDdsd->dwSize, lpDdsd->dwFlags);
+	if (lpDdsd->dwFlags & DDSD_CAPS)
+		printDDSCaps(" caps", lpDdsd->ddsCaps.dwCaps);
+	if (lpDdsd->dwFlags & DDSD_PIXELFORMAT)
+		printPixelFormat(" pf", lpDdsd->ddpfPixelFormat);
+	(*(int*)lpContext)++;
+	return DDENUMRET_OK;
+}
+
+HRESULT CALLBACK enumDevices1(GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID lpContext)
+{
+	enum1ctx& ctx = *(enum1ctx*)lpContext;
+	uint64_t guid[2] = { 0 };
+	if (lpGUID)
+		memcpy(guid, lpGUID, sizeof(GUID));
+
+	printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
+
+	DDSURFACEDESC ddsd = {0};
+	ddsd.dwSize = sizeof(ddsd);
+	ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
+	ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE;
+	ddsd.dwWidth = 256;
+	ddsd.dwHeight = 256;
+	IDirectDrawSurface* surf = nullptr;
+	HRESULT r = ctx.pdd->CreateSurface(&ddsd, &surf, nullptr);
+	printf("%d (%s) IDirectDraw::CreateSurface(3DDEVICE) %p\n", r, ddResultToStr(r).c_str(), surf);
+	if (surf)
+	{
+		IDirect3DDevice* pd3dd = nullptr;
+		r = surf->QueryInterface(*lpGUID, (void**)&pd3dd);
+		printf("%d (%s) IDirectDrawSurface::QueryInterface(IDirect3DDevice) %p\n", r, ddResultToStr(r).c_str(), pd3dd);
+		if (pd3dd)
+		{
+			int fmtCount = 0;
+			r = pd3dd->EnumTextureFormats(enumDDSD, &fmtCount);
+			printf("%d (%s) D3DD::EnumTextureFormats count %d\n", r, ddResultToStr(r).c_str(), fmtCount);
+
+			VerboseRelease(pd3dd, "IDirect3DDevice");
+		}
+
+		VerboseRelease(surf, "IDirectDrawSurface");
+	}
+
+	ctx.count++;
+	return DDENUMRET_OK;
+};
+
+struct enum3ctx
+{
+	int count;
+	IDirectDraw4* pdd4;
+	IDirect3D3* pd3d3;
+};
+
+HRESULT CALLBACK enumFmt(LPDDPIXELFORMAT lpDDPixFmt, LPVOID lpContext)
+{
+	printPixelFormat(" pf", *lpDDPixFmt);
+	(*(int*)lpContext)++;
+	return DDENUMRET_OK;
+};
+
+HRESULT CALLBACK enumDevices3(GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID lpContext)
+{
+	enum3ctx& ctx = *(enum3ctx*)lpContext;
+	uint64_t guid[2] = { 0 };
+	if (lpGUID)
+		memcpy(guid, lpGUID, sizeof(GUID));
+
+	printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
+
+	DDSURFACEDESC2 ddsd = {0};
+	ddsd.dwSize = sizeof(ddsd);
+	ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
+	ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE;
+	ddsd.dwWidth = 256;
+	ddsd.dwHeight = 256;
+	IDirectDrawSurface4* surf = nullptr;
+	HRESULT r = ctx.pdd4->CreateSurface(&ddsd, &surf, nullptr);
+	printf("%d (%s) IDirectDraw4::CreateSurface(3DDEVICE) %p\n", r, ddResultToStr(r).c_str(), surf);
+
+	if (surf)
+	{
+		IDirect3DDevice3* pd3dd = nullptr;
+		r = ctx.pd3d3->CreateDevice(*lpGUID, surf, &pd3dd, nullptr);
+		printf("%d (%s) D3D3::CreateDevice %p\n", r, ddResultToStr(r).c_str(), pd3dd);
+		if (pd3dd)
+		{
+			int fmtCount = 0;
+			r = pd3dd->EnumTextureFormats(enumFmt, &fmtCount);
+			printf("%d (%s) D3DD3::EnumTextureFormats count %d\n", r, ddResultToStr(r).c_str(), fmtCount);
+
+			VerboseRelease(pd3dd, "IDirect3DDevice");
+		}
+
+		VerboseRelease(surf, "IDirectDrawSurface");
+	}
+
+	int fmtCount = 0;
+	r = ctx.pd3d3->EnumZBufferFormats(*lpGUID, enumFmt, &fmtCount);
+	printf("%d (%s) D3D3::EnumZBufferFormats count %d\n", r, ddResultToStr(r).c_str(), fmtCount);
+
+	ctx.count++;
+	return DDENUMRET_OK;
+}
+
+HRESULT CALLBACK enumDevices7(LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC7 descHW, LPVOID lpContext)
+{
+	uint64_t guid[2] = { 0 };
+	if (descHW)
+		memcpy(guid, &descHW->deviceGUID, sizeof(GUID));
+
+	printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
+
+	(*(int*)lpContext)++;
+	return DDENUMRET_OK;
+}
+
+#if(DIRECT3D_VERSION < 0x0700)
+#define IDirectDraw7 void
+#endif
 void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 {
 	HRESULT r;
@@ -707,9 +905,9 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	r = pdd->QueryInterface(IID_IDirectDraw4, (void**)&pdd4);
 	printf("%d (%s) IDirectDraw::QueryInterface(IID_IDirectDraw4) %p\n", r, ddResultToStr(r).c_str(), pdd4);
 
-	DDCAPS_DX1 driverCaps{};
+	DDCAPS_DX1 driverCaps = {0};
 	driverCaps.dwSize = sizeof(driverCaps);
-	DDCAPS_DX1 HELCaps{};
+	DDCAPS_DX1 HELCaps = {0};
 	HELCaps.dwSize = sizeof(HELCaps);
 	r = pdd->GetCaps((DDCAPS*)&driverCaps, (DDCAPS*)&HELCaps);
 	printf("%d (%s) IDirectDraw::GetCaps\n", r, ddResultToStr(r).c_str());
@@ -725,10 +923,10 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	r = pdd->GetFourCCCodes(&numCC, nullptr);
 	printf("%d (%s) IDirectDraw::GetFourCCCodes %d\n", r, ddResultToStr(r).c_str(), numCC);
 	std::vector<DWORD> ccs(numCC);
-	r = pdd->GetFourCCCodes(&numCC, ccs.data());
+	r = pdd->GetFourCCCodes(&numCC, &ccs[0]);
 	if (r) printf("%d (%s) DD::GetFourCCCodes %d\n", r, ddResultToStr(r).c_str(), numCC);
 	for (size_t i = 0; i < ccs.size(); i++)
-		printf(" %2zu: %X (%.4s)\n", i, ccs[i], (const char *)&ccs[i]);
+		printf(" %2du: %X (%.4s)\n", (int)i, ccs[i], (const char *)&ccs[i]);
 #if 0
 	numCC = 0;
 	r = pdd4->GetFourCCCodes(&numCC, nullptr);
@@ -737,23 +935,14 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	r = pdd4->GetFourCCCodes(&numCC, ccs.data());
 	if (r) printf("%d (%s) DD4::GetFourCCCodes %d\n", r, ddResultToStr(r).c_str(), numCC);
 	for (size_t i = 0; i < ccs.size(); i++)
-		printf(" %2zu: %X (%.4s)\n", i, ccs[i], &ccs[i]);
+		printf(" %2du: %X (%.4s)\n", (int)i, ccs[i], &ccs[i]);
 #endif
 
-	DDSCAPS ddsCaps{ 0 };
+	DDSCAPS ddsCaps = { 0 };
 	DWORD totalMem = 0;
 	DWORD freeMem = 0;
 	r = pdd2->GetAvailableVidMem(&ddsCaps, &totalMem, &freeMem);
 	printf("%d (%s) DD2::GetAvailableVidMem total %u free %u\n", r, ddResultToStr(r).c_str(), totalMem, freeMem);
-
-	auto enumModes = [](LPDDSURFACEDESC lpDDSDesc, LPVOID lpContext) -> HRESULT
-		{
-			printf(" %2d: %dx%d %dHz %dbit\n", *(int*)lpContext, lpDDSDesc->dwWidth, lpDDSDesc->dwHeight, lpDDSDesc->dwRefreshRate, lpDDSDesc->ddpfPixelFormat.dwRGBBitCount);
-			printf("  flags %X pitch %d ", lpDDSDesc->dwFlags, lpDDSDesc->lPitch);
-			printPixelFormat("pf", lpDDSDesc->ddpfPixelFormat);
-			(*(int*)lpContext)++;
-			return DDENUMRET_OK;
-		};
 
 	int count = 0;
 	r = pdd->EnumDisplayModes(DDEDM_REFRESHRATES, nullptr, &count, enumModes);
@@ -766,27 +955,13 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 		printf("%d (%s) DD2::EnumDisplayModes count %d\n", r, ddResultToStr(r).c_str(), count);
 	}
 #endif
-	auto enumSurf = [](LPDIRECTDRAWSURFACE lpDDSurface, LPDDSURFACEDESC lpDesc, LPVOID lpContext) ->HRESULT
-		{
-			printf(" %d: surf %p desc %p\n", *(int*)lpContext, lpDDSurface, lpDesc);
-			if (lpDesc)
-			{
-				printf("  desc: flags %X caps %X size %dx%d pitch %d\n", lpDesc->dwFlags, lpDesc->ddsCaps.dwCaps, lpDesc->dwWidth, lpDesc->dwHeight, lpDesc->lPitch);
-				printPixelFormat("  pf", lpDesc->ddpfPixelFormat);
-
-			}
-			if (lpDDSurface)
-				VerboseRelease(lpDDSurface, "IDirectDrawSurface");
-			(*(int*)lpContext)++;
-			return DDENUMRET_OK;
-		};
 
 	count = 0;
 	r = pdd->EnumSurfaces(DDENUMSURFACES_DOESEXIST | DDENUMSURFACES_ALL, nullptr, &count, enumSurf);
 	printf("%d (%s) IDirectDraw::EnumSurfaces(DDENUMSURFACES_DOESEXIST | DDENUMSURFACES_ALL) count %d\n", r, ddResultToStr(r).c_str(), count);
 
 	count = 0;
-	DDSURFACEDESC ddsd{ 0 };
+	DDSURFACEDESC ddsd = { 0 };
 	ddsd.dwSize = sizeof(ddsd);
 	r = pdd->EnumSurfaces(DDENUMSURFACES_CANBECREATED | DDENUMSURFACES_MATCH, &ddsd, &count, enumSurf);
 	printf("%d (%s) IDirectDraw::EnumSurfaces(DDENUMSURFACES_CANBECREATED | DDENUMSURFACES_MATCH) count %d\n", r, ddResultToStr(r).c_str(), count);
@@ -828,18 +1003,6 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	}
 #endif
 
-	auto enumDevices = [](GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID lpContext) -> HRESULT
-		{
-			uint64_t guid[2]{ 0 };
-			if (lpGUID)
-				memcpy(guid, lpGUID, sizeof(GUID));
-
-			printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
-
-			(*(int*)lpContext)++;
-			return DDENUMRET_OK;
-		};
-
 	printf("DX2:\n");
 	IDirect3D* pd3d = nullptr;
 	r = pdd->QueryInterface(IID_IDirect3D, (void**)&pd3d);
@@ -847,7 +1010,7 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	if (pd3d)
 	{
 		count = 0;
-		r = pd3d->EnumDevices(enumDevices, &count);
+		r = pd3d->EnumDevices(enumDevicesPrint, &count);
 		printf("%d (%s) D3D::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
 	}
 #if(DIRECT3D_VERSION >= 0x0500)
@@ -858,7 +1021,7 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	if (pd3d2)
 	{
 		count = 0;
-		r = pd3d2->EnumDevices(enumDevices, &count);
+		r = pd3d2->EnumDevices(enumDevicesPrint, &count);
 		printf("%d (%s) D3D2::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
 	}
 #endif
@@ -870,23 +1033,11 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	if (pd3d3)
 	{
 		count = 0;
-		r = pd3d3->EnumDevices(enumDevices, &count);
+		r = pd3d3->EnumDevices(enumDevicesPrint, &count);
 		printf("%d (%s) D3D3::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
 	}
 #endif
 #if(DIRECT3D_VERSION >= 0x0700)
-	auto enumDevices7 = [](LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC7 descHW, LPVOID lpContext) -> HRESULT
-		{
-			uint64_t guid[2]{ 0 };
-			if (descHW)
-				memcpy(guid, &descHW->deviceGUID, sizeof(GUID));
-
-			printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
-
-			(*(int*)lpContext)++;
-			return DDENUMRET_OK;
-		};
-
 	if (pdd7)
 	{
 		printf("DX7:\n");
@@ -906,60 +1057,7 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	{
 		printf("DX2 formats:\n");
 
-		struct enum1ctx {
-			int count = 0;
-			IDirectDraw* pdd = nullptr;
-			IDirect3D* pd3d = nullptr;
-		} ctx1{};
-		auto enumDevices1 = [](GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID lpContext) -> HRESULT
-			{
-				enum1ctx& ctx = *(enum1ctx*)lpContext;
-				uint64_t guid[2]{ 0 };
-				if (lpGUID)
-					memcpy(guid, lpGUID, sizeof(GUID));
-
-				printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
-
-				DDSURFACEDESC ddsd{};
-				ddsd.dwSize = sizeof(ddsd);
-				ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
-				ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE;
-				ddsd.dwWidth = 256;
-				ddsd.dwHeight = 256;
-				IDirectDrawSurface* surf = nullptr;
-				HRESULT r = ctx.pdd->CreateSurface(&ddsd, &surf, nullptr);
-				printf("%d (%s) IDirectDraw::CreateSurface(3DDEVICE) %p\n", r, ddResultToStr(r).c_str(), surf);
-				if (surf)
-				{
-					IDirect3DDevice* pd3dd = nullptr;
-					r = surf->QueryInterface(*lpGUID, (void**)&pd3dd);
-					printf("%d (%s) IDirectDrawSurface::QueryInterface(IDirect3DDevice) %p\n", r, ddResultToStr(r).c_str(), pd3dd);
-					if (pd3dd)
-					{
-						auto enumDDSD = [](LPDDSURFACEDESC lpDdsd, LPVOID lpContext) -> HRESULT
-							{
-								printf(" size %d flags %X", lpDdsd->dwSize, lpDdsd->dwFlags);
-								if (lpDdsd->dwFlags & DDSD_CAPS)
-									printDDSCaps(" caps", lpDdsd->ddsCaps.dwCaps);
-								if (lpDdsd->dwFlags & DDSD_PIXELFORMAT)
-									printPixelFormat(" pf", lpDdsd->ddpfPixelFormat);
-								(*(int*)lpContext)++;
-								return DDENUMRET_OK;
-							};
-
-						int fmtCount = 0;
-						r = pd3dd->EnumTextureFormats(enumDDSD, &fmtCount);
-						printf("%d (%s) D3DD::EnumTextureFormats count %d\n", r, ddResultToStr(r).c_str(), fmtCount);
-
-						VerboseRelease(pd3dd, "IDirect3DDevice");
-					}
-
-					VerboseRelease(surf, "IDirectDrawSurface");
-				}
-
-				ctx.count++;
-				return DDENUMRET_OK;
-			};
+		enum1ctx ctx1 = {0};
 
 		r = pdd->SetCooperativeLevel(nullptr, DDSCL_NORMAL);
 		printf("%d (%s) IDirectDraw::SetCooperativeLevel\n", r, ddResultToStr(r).c_str());
@@ -976,61 +1074,8 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 	{
 		printf("DX6 formats:\n");
 
-		struct enum3ctx {
-			int count = 0;
-			IDirectDraw4* pdd4 = nullptr;
-			IDirect3D3* pd3d3 = nullptr;
-		} ctx{};
-		auto enumDevices3 = [](GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID lpContext) -> HRESULT
-			{
-				enum3ctx& ctx = *(enum3ctx*)lpContext;
-				uint64_t guid[2]{ 0 };
-				if (lpGUID)
-					memcpy(guid, lpGUID, sizeof(GUID));
+		enum3ctx ctx = {0};
 
-				printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
-
-				DDSURFACEDESC2 ddsd{};
-				ddsd.dwSize = sizeof(ddsd);
-				ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
-				ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE;
-				ddsd.dwWidth = 256;
-				ddsd.dwHeight = 256;
-				IDirectDrawSurface4* surf = nullptr;
-				HRESULT r = ctx.pdd4->CreateSurface(&ddsd, &surf, nullptr);
-				printf("%d (%s) IDirectDraw4::CreateSurface(3DDEVICE) %p\n", r, ddResultToStr(r).c_str(), surf);
-
-				auto enumFmt = [](LPDDPIXELFORMAT lpDDPixFmt, LPVOID lpContext) -> HRESULT
-					{
-						printPixelFormat(" pf", *lpDDPixFmt);
-						(*(int*)lpContext)++;
-						return DDENUMRET_OK;
-					};
-
-				if (surf)
-				{
-					IDirect3DDevice3* pd3dd = nullptr;
-					r = ctx.pd3d3->CreateDevice(*lpGUID, surf, &pd3dd, nullptr);
-					printf("%d (%s) D3D3::CreateDevice %p\n", r, ddResultToStr(r).c_str(), pd3dd);
-					if (pd3dd)
-					{
-						int fmtCount = 0;
-						r = pd3dd->EnumTextureFormats(enumFmt, &fmtCount);
-						printf("%d (%s) D3DD3::EnumTextureFormats count %d\n", r, ddResultToStr(r).c_str(), fmtCount);
-
-						VerboseRelease(pd3dd, "IDirect3DDevice");
-					}
-
-					VerboseRelease(surf, "IDirectDrawSurface");
-				}
-
-				int fmtCount = 0;
-				r = ctx.pd3d3->EnumZBufferFormats(*lpGUID, enumFmt, &fmtCount);
-				printf("%d (%s) D3D3::EnumZBufferFormats count %d\n", r, ddResultToStr(r).c_str(), fmtCount);
-
-				ctx.count++;
-				return DDENUMRET_OK;
-			};
 		ctx.pdd4 = pdd4;
 		ctx.pd3d3 = pd3d3;
 		r = pd3d3->EnumDevices(enumDevices3, &ctx);
@@ -1054,68 +1099,99 @@ void printModesDevices(IDirectDraw *pdd, IDirectDraw7 *pdd7)
 		VerboseRelease(pdd2, "IDirectDraw4");
 }
 
+BOOL CALLBACK ddEnumPrint(GUID FAR* lpGUID, LPSTR  lpDriverDescription, LPSTR  lpDriverName, LPVOID lpContext)
+{
+	uint64_t guid[2] = { 0 };
+	if (lpGUID)
+		memcpy(guid, lpGUID, sizeof(GUID));
+
+	printf("DirectDrawEnumerateA: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDriverName, lpDriverDescription);
+	return TRUE;
+}
+
+BOOL CALLBACK ddEnumExPrint(GUID FAR* lpGUID, LPSTR  lpDriverDescription, LPSTR  lpDriverName, LPVOID lpContext, HMONITOR hm)
+{
+	uint64_t guid[2] = { 0 };
+	if (lpGUID)
+		memcpy(guid, lpGUID, sizeof(GUID));
+
+	printf("DirectDrawEnumerateExA: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\" monitor %p\n", guid[0], guid[1], lpDriverName, lpDriverDescription, hm);
+#if 0
+	IDirectDraw* pdd = nullptr;
+	HRESULT r = DirectDrawCreate(lpGUID, &pdd, nullptr);
+	printf("%d (%s) DirectDrawCreate %p\n", r, ddResultToStr(r).c_str(), pdd);
+	if (pdd)
+	{
+		printModesDevices(pdd);
+		VerboseRelease(pdd, "IDirectDraw");
+	}
+#endif
+	return TRUE;
+}
+
+HRESULT CALLBACK enumDevicesCaps (GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID user)
+{
+	uint64_t guid[2] = { 0 };
+	if (lpGUID)
+		memcpy(guid, lpGUID, sizeof(GUID));
+
+	printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
+	printD3DDCaps("HW", *descHW);
+	printD3DDCaps("HEL", *descHEL);
+	(*(int*)user)++;
+	return DDENUMRET_OK;
+}
+
 int main()
 {
 	HRESULT r;
 
-	r = DirectDrawEnumerateA([](GUID FAR* lpGUID, LPSTR  lpDriverDescription, LPSTR  lpDriverName, LPVOID lpContext) -> BOOL
-		{
-			uint64_t guid[2]{ 0 };
-			if (lpGUID)
-				memcpy(guid, lpGUID, sizeof(GUID));
+	HMODULE lib = LoadLibraryA("ddraw.dll");
+	printf("Load ddraw.dll %p\n", lib);
+	if (!lib)
+	{
+		printf("GetLastError %u\n", GetLastError());
+		return -1;
+	}
 
-			printf("DirectDrawEnumerateA: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDriverName, lpDriverDescription);
-			return TRUE;
-		}, nullptr);
+	typedef HRESULT (WINAPI *PFN_DirectDrawEnumerateA)( LPDDENUMCALLBACKA lpCallback, LPVOID lpContext );
+	typedef HRESULT (WINAPI *PFN_DirectDrawEnumerateW)( LPDDENUMCALLBACKW lpCallback, LPVOID lpContext );
+	typedef HRESULT (WINAPI *PFN_DirectDrawEnumerateExA)( LPDDENUMCALLBACKEXA lpCallback, LPVOID lpContext, DWORD dwFlags);
+	typedef HRESULT (WINAPI *PFN_DirectDrawEnumerateExW)( LPDDENUMCALLBACKEXW lpCallback, LPVOID lpContext, DWORD dwFlags);
+	typedef HRESULT (WINAPI *PFN_DirectDrawCreate)( GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter );
+	typedef HRESULT (WINAPI *PFN_DirectDrawCreateEx)( GUID FAR * lpGuid, LPVOID  *lplpDD, REFIID  iid,IUnknown FAR *pUnkOuter );
+
+#define X(name) PFN_##name p##name = (PFN_##name)GetProcAddress(lib, #name);\
+	printf(#name " %p\n", p##name);
+
+	X(DirectDrawEnumerateA)
+	X(DirectDrawEnumerateW)
+	X(DirectDrawEnumerateExA)
+	X(DirectDrawEnumerateExW)
+	X(DirectDrawCreate)
+	X(DirectDrawCreateEx)
+#undef X
+
+	r = pDirectDrawEnumerateA(ddEnumPrint, nullptr);
 	printf("%d (%s) DirectDrawEnumerateA\n", r, ddResultToStr(r).c_str());
 
-	r = DirectDrawEnumerateExA([](GUID FAR* lpGUID, LPSTR  lpDriverDescription, LPSTR  lpDriverName, LPVOID lpContext, HMONITOR hm) -> BOOL
-		{
-			uint64_t guid[2]{ 0 };
-			if (lpGUID)
-				memcpy(guid, lpGUID, sizeof(GUID));
-
-			printf("DirectDrawEnumerateExA: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\" monitor %p\n", guid[0], guid[1], lpDriverName, lpDriverDescription, hm);
-#if 0
-			IDirectDraw* pdd = nullptr;
-			HRESULT r = DirectDrawCreate(lpGUID, &pdd, nullptr);
-			printf("%d (%s) DirectDrawCreate %p\n", r, ddResultToStr(r).c_str(), pdd);
-			if (pdd)
-			{
-				printModesDevices(pdd);
-				VerboseRelease(pdd, "IDirectDraw");
-			}
-#endif
-			return TRUE;
-		}, nullptr, DDENUM_ATTACHEDSECONDARYDEVICES | DDENUM_DETACHEDSECONDARYDEVICES | DDENUM_NONDISPLAYDEVICES);
+	r = pDirectDrawEnumerateExA(ddEnumExPrint, nullptr, DDENUM_ATTACHEDSECONDARYDEVICES | DDENUM_DETACHEDSECONDARYDEVICES | DDENUM_NONDISPLAYDEVICES);
 	printf("%d (%s) DirectDrawEnumerateExA\n", r, ddResultToStr(r).c_str());
 
 	IDirectDraw* pdd = nullptr;
 	IDirectDraw7* pdd7 = nullptr;
 
-	r = DirectDrawCreate(nullptr, &pdd, nullptr);
+	r = pDirectDrawCreate(nullptr, &pdd, nullptr);
 	printf("%d (%s) DirectDrawCreate %p\n", r, ddResultToStr(r).c_str(), pdd);
 	if (!pdd || r != DD_OK)
 		return -1;
 
-	r = DirectDrawCreateEx(nullptr, (void**)&pdd7, IID_IDirectDraw7, nullptr);
+#if(DIRECT3D_VERSION >= 0x0700)
+	r = pDirectDrawCreateEx(nullptr, (void**)&pdd7, IID_IDirectDraw7, nullptr);
 	printf("%d (%s) DirectDrawCreateEx(DD7) %p\n", r, ddResultToStr(r).c_str(), pdd7);
-
+#endif
 
 	printModesDevices(pdd, pdd7);
-
-	auto enumDevices = [](GUID FAR* lpGUID, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC descHW, LPD3DDEVICEDESC descHEL, LPVOID user) -> HRESULT
-		{
-			uint64_t guid[2]{ 0 };
-			if (lpGUID)
-				memcpy(guid, lpGUID, sizeof(GUID));
-
-			printf("EnumDevices: %.16" PRIX64 "%.16" PRIX64 " \"%s\" \"%s\"\n", guid[0], guid[1], lpDeviceName, lpDeviceDescription);
-			printD3DDCaps("HW", *descHW);
-			printD3DDCaps("HEL", *descHEL);
-			(*(int*)user)++;
-			return DDENUMRET_OK;
-		};
 
 	int count = 0;
 
@@ -1126,7 +1202,7 @@ int main()
 	if (pd3d)
 	{
 		count = 0;
-		r = pd3d->EnumDevices(enumDevices, &count);
+		r = pd3d->EnumDevices(enumDevicesCaps, &count);
 		printf("%d (%s) IDirect3D::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
 		VerboseRelease(pd3d, "IDirect3D");
 	}
@@ -1139,7 +1215,7 @@ int main()
 	if (pd3d2)
 	{
 		count = 0;
-		r = pd3d2->EnumDevices(enumDevices, &count);
+		r = pd3d2->EnumDevices(enumDevicesCaps, &count);
 		printf("%d (%s) IDirect3D2::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
 		VerboseRelease(pd3d2, "IDirect3D2");
 	}
@@ -1153,7 +1229,7 @@ int main()
 	if (pd3d3)
 	{
 		count = 0;
-		r = pd3d3->EnumDevices(enumDevices, &count);
+		r = pd3d3->EnumDevices(enumDevicesCaps, &count);
 		printf("%d (%s) D3D3::EnumDevices count %d\n", r, ddResultToStr(r).c_str(), count);
 		VerboseRelease(pd3d3, "IDirect3D3");
 	}
