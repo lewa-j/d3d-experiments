@@ -4,6 +4,8 @@
 #include <inttypes.h>
 #include "d3d8.h"
 #include <string>
+//#define GLM_FORCE_LEFT_HANDED 1
+//#include <glm/gtc/matrix_transform.hpp>
 
 #define Log printf
 
@@ -182,13 +184,102 @@ int main(int argc, const char **argv)
 		return -1;
 	}
 
+	DWORD decl[] = {
+		D3DVSD_STREAM(0),
+		D3DVSD_REG(D3DVSDE_POSITION, D3DVSDT_FLOAT3),
+		D3DVSD_SKIP(1),
+		D3DVSD_REG(D3DVSDE_DIFFUSE, D3DVSDT_D3DCOLOR),
+		D3DVSD_END()
+	};
+	DWORD func[] = {
+		D3DVS_VERSION(1,0),
+		/*
+		//mov oPos, v0
+		D3DSIO_MOV,
+		D3DSRO_POSITION | D3DSP_WRITEMASK_ALL | D3DSPR_RASTOUT | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
+		*/
+#if 0
+		/* transposed mtx
+		dp4 r0.x, v0, c0
+		dp4 r0.y, v0, c1
+		dp4 r0.z, v0, c2
+		dp4 r0.w, v0, c3
+		*/
+		D3DSIO_DP4,
+		0 | D3DSP_WRITEMASK_0 | D3DSPR_TEMP | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
+		0 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+		D3DSIO_DP4,
+		0 | D3DSP_WRITEMASK_1 | D3DSPR_TEMP | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
+		1 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+		D3DSIO_DP4,
+		0 | D3DSP_WRITEMASK_2 | D3DSPR_TEMP | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
+		2 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+		D3DSIO_DP4,
+		0 | D3DSP_WRITEMASK_3 | D3DSPR_TEMP | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
+		3 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+#endif
+		/*
+		mul r0, c0, v0.x
+		mad r0, c1, v0.y, r0 
+		mad r0, c2, v0.z, r0
+		mad oPos, c3, v0.w, r0
+		*/
+		D3DSIO_MUL,
+		0 | D3DSP_WRITEMASK_ALL | D3DSPR_TEMP | 0x80000000,
+		0 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_X_X | D3DVS_Y_X | D3DVS_Z_X | D3DVS_W_X | D3DSPR_INPUT | 0x80000000,
+		D3DSIO_MAD,
+		0 | D3DSP_WRITEMASK_ALL | D3DSPR_TEMP | 0x80000000,
+		1 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_X_Y | D3DVS_Y_Y | D3DVS_Z_Y | D3DVS_W_Y | D3DSPR_INPUT | 0x80000000,
+		0 | D3DVS_NOSWIZZLE | D3DSPR_TEMP | 0x80000000,
+		D3DSIO_MAD,
+		0 | D3DSP_WRITEMASK_ALL | D3DSPR_TEMP | 0x80000000,
+		2 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_X_Z | D3DVS_Y_Z | D3DVS_Z_Z | D3DVS_W_Z | D3DSPR_INPUT | 0x80000000,
+		0 | D3DVS_NOSWIZZLE | D3DSPR_TEMP | 0x80000000,
+		D3DSIO_MAD,
+		0 | D3DSP_WRITEMASK_ALL | D3DSPR_TEMP | 0x80000000,
+		3 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+		D3DVSDE_POSITION | D3DVS_X_W | D3DVS_Y_W | D3DVS_Z_W | D3DVS_W_W | D3DSPR_INPUT | 0x80000000,
+		0 | D3DVS_NOSWIZZLE | D3DSPR_TEMP | 0x80000000,
+
+		//mov oPos, r0
+		D3DSIO_MOV,
+		D3DSRO_POSITION | D3DSP_WRITEMASK_ALL | D3DSPR_RASTOUT | 0x80000000,
+		0 | D3DVS_NOSWIZZLE | D3DSPR_TEMP | 0x80000000,
+#if 0
+		//mov oD0, c4
+		D3DSIO_MOV,
+		0 | D3DSP_WRITEMASK_ALL | D3DSPR_ATTROUT | 0x80000000,
+		4 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
+#else
+		//mov oD0, v1
+		D3DSIO_MOV,
+		0 | D3DSP_WRITEMASK_ALL | D3DSPR_ATTROUT | 0x80000000,
+		//D3DVSDE_DIFFUSE | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
+		0 | D3DVS_NOSWIZZLE | D3DSPR_TEMP | 0x80000000,
+#endif
+		D3DVS_END()
+	};
+	DWORD vertShader = 0;
+	r = d3dd->CreateVertexShader(decl, func, &vertShader, 0);
+	Log("%d (%s) IDirect3DDevice8::CreateVertexShader %d\n", r, d3dErrorString(r).c_str(), vertShader);
+
 	struct vert_t {
 		float x, y, z, rhw;
 		D3DCOLOR color;
 	};
-	const DWORD fvf_vert = D3DFVF_XYZRHW | D3DFVF_DIFFUSE;
-	const int vertCount = 3;
-#if 0
+	//const DWORD fvf_vert = D3DFVF_XYZRHW | D3DFVF_DIFFUSE;
+	const DWORD fvf_vert = D3DFVF_XYZ | D3DFVF_PSIZE | D3DFVF_DIFFUSE;
+	const int vertCount = 6;
+#define USE_VBO 0
+#if USE_VBO
 	IDirect3DVertexBuffer8 *vbo = nullptr;
 	r = d3dd->CreateVertexBuffer(sizeof(vert_t) * vertCount, 0, fvf_vert, D3DPOOL_DEFAULT, &vbo);
 	Log("%d CreateVertexBuffer %p\n", r, vbo);
@@ -198,22 +289,64 @@ int main(int argc, const char **argv)
 	pv[0] = {150, 50, 0.5, 1, 0xFFFF0000};
 	pv[1] = {250, 250, 0.5, 1, 0xFF00FF00};
 	pv[2] = {50, 250, 0.5, 1, 0xFF0000FF};
+	pv[3] = { 0, -0.5, 0.5, 1, 0xFFFF0000 };
+	pv[4] = { 0.5, 0.5, 0.5, 1, 0xFF00FF00 };
+	pv[5] = { -0.5, 0.5, 0.5, 1, 0xFF0000FF };
 	vbo->Unlock();
 #else
-	vert_t verts[3]{
-		{150, 50, 0.5, 1, 0xFFFF0000},
-		{250, 250, 0.5, 1, 0xFF00FF00},
-		{50, 250, 0.5, 1, 0xFF0000FF}
+	vert_t verts[6]{
+		{150, 50, 0.1, 1, 0xFFFF0000},
+		{250, 250, 0.1, 1, 0xFF00FF00},
+		{50, 250, 0.1, 1, 0xFF0000FF},
+
+		{0, 0.5, 0.1, 1, 0xFFFF0000},
+		{0.5, -0.5, 0.1, 1, 0xFF00FF00},
+		{-0.5, -0.5, 0.1, 1, 0xFF0000FF}
 	};
 #endif
+
 	r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
 	Log("%d IDirect3DDevice8::Clear\n", r);
+
+	static int frame = 0;
+	//render
+	auto render = [&]()
+	{
+	r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
 	r = d3dd->BeginScene();
-	//r = d3dd->SetStreamSource(0, vbo, sizeof(vert_t));
+	if (r != D3D_OK)
+		return;
+#if 0
 	r = d3dd->SetVertexShader(fvf_vert);
-	//r = d3dd->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
-	r = d3dd->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 1, verts, sizeof(vert_t));
+#else
+	r = d3dd->SetVertexShader(vertShader);
+#endif
+	frame++;
+	float ct = cos(frame * 0.01f) * 0.005;
+	float st = sin(frame * 0.01f) * -0.005;
+	D3DMATRIX mtxWorld = {
+		ct,st,0,0,
+		-st,ct,0,0,
+		0,0,1,0,
+		(ct - st) * -150,(st + ct) * -150,0,1
+	};
+	r = d3dd->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+	r = d3dd->SetRenderState(D3DRS_LIGHTING, FALSE);
+
+	r = d3dd->SetTransform(D3DTS_WORLD, &mtxWorld);
+	r = d3dd->SetVertexShaderConstant(0, &mtxWorld, 4);
+	float color[4] = { 1,0,0,1 };
+	r = d3dd->SetVertexShaderConstant(4, color, 1);
+
+#if USE_VBO
+	r = d3dd->SetStreamSource(0, vbo, sizeof(vert_t));
+	r = d3dd->DrawPrimitive(D3DPT_TRIANGLELIST, 0, vertCount / 3);
+#else
+	r = d3dd->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertCount / 3, verts, sizeof(vert_t));
+#endif
 	r = d3dd->EndScene();
+	};
+	render();
 	r = d3dd->Present(nullptr, nullptr, nullptr, nullptr);
 	Log("%d Present\n", r);
 
@@ -223,6 +356,9 @@ int main(int argc, const char **argv)
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
+
+		render();
+		r = d3dd->Present(nullptr, nullptr, nullptr, nullptr);
 	}
 
 	// shutdown
