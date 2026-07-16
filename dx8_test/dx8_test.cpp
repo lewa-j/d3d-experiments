@@ -271,6 +271,7 @@ int main(int argc, const char **argv)
 	r = d3dd->CreateVertexShader(decl, func, &vertShader, 0);
 	Log("%d (%s) IDirect3DDevice8::CreateVertexShader %d\n", r, d3dErrorString(r).c_str(), vertShader);
 
+#if 0
 	struct vert_t {
 		float x, y, z, rhw;
 		D3DCOLOR color;
@@ -278,12 +279,22 @@ int main(int argc, const char **argv)
 	//const DWORD fvf_vert = D3DFVF_XYZRHW | D3DFVF_DIFFUSE;
 	const DWORD fvf_vert = D3DFVF_XYZ | D3DFVF_PSIZE | D3DFVF_DIFFUSE;
 	const int vertCount = 6;
+#else
+	struct vert2_t {
+		float x, y, z;
+		D3DCOLOR color;
+		float s, t;
+	};
+	const DWORD fvf_vert = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
+	const int vertCount = 3;
+#endif
 #define USE_VBO 0
 #if USE_VBO
 	IDirect3DVertexBuffer8 *vbo = nullptr;
 	r = d3dd->CreateVertexBuffer(sizeof(vert_t) * vertCount, 0, fvf_vert, D3DPOOL_DEFAULT, &vbo);
 	Log("%d CreateVertexBuffer %p\n", r, vbo);
 
+	//todo vert2
 	vert_t *pv = nullptr;
 	vbo->Lock(0, sizeof(vert_t) *vertCount, (BYTE **)&pv, 0);
 	pv[0] = {150, 50, 0.5, 1, 0xFFFF0000};
@@ -294,6 +305,7 @@ int main(int argc, const char **argv)
 	pv[5] = { -0.5, 0.5, 0.5, 1, 0xFF0000FF };
 	vbo->Unlock();
 #else
+#if 0
 	vert_t verts[6]{
 		{150, 50, 0.1, 1, 0xFFFF0000},
 		{250, 250, 0.1, 1, 0xFF00FF00},
@@ -303,7 +315,38 @@ int main(int argc, const char **argv)
 		{0.5, -0.5, 0.1, 1, 0xFF00FF00},
 		{-0.5, -0.5, 0.1, 1, 0xFF0000FF}
 	};
+#else
+	vert2_t verts[3]{
+		{0, 0.5, 0.1, 0xFFFF0000, 0.5, 1},
+		{0.5, -0.5, 0.1, 0xFF00FF00, 1, 0},
+		{-0.5, -0.5, 0.1, 0xFF0000FF, 0, 0},
+	};
 #endif
+#endif
+
+	int width = 8;
+	int height = 8;
+
+	IDirect3DTexture8 *tex = nullptr;
+	r = d3dd->CreateTexture(width, height, 1, 0, D3DFMT_X8R8G8B8, D3DPOOL_MANAGED, &tex);
+	Log("%d IDirect3DDevice8::CreateTexture %p\n", r, tex);
+	D3DLOCKED_RECT lockedRect{ 0 };
+	r = tex->LockRect(0, &lockedRect, nullptr, 0);
+	Log("%d (%s) IDirect3DTexture8::LockRect %p pitch 0x%X\n", r, d3dErrorString(r).c_str(), lockedRect.pBits, lockedRect.Pitch);
+	if (r == D3D_OK && lockedRect.pBits)
+	{
+		uint32_t *p = (uint32_t*)lockedRect.pBits;
+		for (int yi = 0; yi < height; yi++)
+		{
+			for (int xi = 0; xi < width; xi++)
+			{
+				p[xi] = ((xi + yi) & 1) ? 0xFF505050 : 0xFFC0C0C0;
+			}
+			p += lockedRect.Pitch >> 2;
+		}
+		r = tex->UnlockRect(0);
+		Log("%d (%s) IDirect3DTexture8::UnlockRect\n", r, d3dErrorString(r).c_str());
+	}
 
 	r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
 	Log("%d IDirect3DDevice8::Clear\n", r);
@@ -316,12 +359,14 @@ int main(int argc, const char **argv)
 	r = d3dd->BeginScene();
 	if (r != D3D_OK)
 		return;
-#if 0
+#define USE_FFP 1
+#if USE_FFP
 	r = d3dd->SetVertexShader(fvf_vert);
 #else
 	r = d3dd->SetVertexShader(vertShader);
 #endif
 	frame++;
+#if 0
 	float ct = cos(frame * 0.01f) * 0.005;
 	float st = sin(frame * 0.01f) * -0.005;
 	D3DMATRIX mtxWorld = {
@@ -330,8 +375,21 @@ int main(int argc, const char **argv)
 		0,0,1,0,
 		(ct - st) * -150,(st + ct) * -150,0,1
 	};
+#else
+	float ct = cos(frame * 0.01f) * 1.5;
+	float st = sin(frame * 0.01f) * 1.5;
+	D3DMATRIX mtxWorld = {
+		ct,st,0,0,
+		-st,ct,0,0,
+		0,0,1,0,
+		0,0,0,1
+	};
+#endif
 	r = d3dd->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 	r = d3dd->SetRenderState(D3DRS_LIGHTING, FALSE);
+
+	r = d3dd->SetTexture(0, tex);
+	r = d3dd->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 
 	r = d3dd->SetTransform(D3DTS_WORLD, &mtxWorld);
 	r = d3dd->SetVertexShaderConstant(0, &mtxWorld, 4);
@@ -342,7 +400,7 @@ int main(int argc, const char **argv)
 	r = d3dd->SetStreamSource(0, vbo, sizeof(vert_t));
 	r = d3dd->DrawPrimitive(D3DPT_TRIANGLELIST, 0, vertCount / 3);
 #else
-	r = d3dd->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertCount / 3, verts, sizeof(vert_t));
+	r = d3dd->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertCount / 3, verts, sizeof(verts[0]));
 #endif
 	r = d3dd->EndScene();
 	};
