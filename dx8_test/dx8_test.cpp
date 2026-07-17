@@ -1,20 +1,32 @@
 
 #include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
 #include "d3d8.h"
 #include <string>
+#include <math.h>
 //#define GLM_FORCE_LEFT_HANDED 1
 //#include <glm/gtc/matrix_transform.hpp>
+
+#if (_MSC_VER > 1100)//TODO test newer versions
+#include <stdint.h>
+#include <inttypes.h>
+#else
+#define uint64_t unsigned __int64
+#define uint32_t unsigned __int32
+#define PRIX64 "I64x"
+#define nullptr NULL
+#define snprintf _snprintf
+#endif
 
 #define Log printf
 
 static void printAdapter(IDirect3D8 *d3d, UINT adapterIndex)
 {
-	D3DADAPTER_IDENTIFIER8 ident{ 0 };
+	D3DADAPTER_IDENTIFIER8 ident;
+	ZeroMemory(&ident, sizeof(ident));
 	HRESULT r = d3d->GetAdapterIdentifier(adapterIndex, 0/*D3DENUM_NO_WHQL_LEVEL*/, &ident);
 
-	uint64_t guid[2]{ 0 };
+	uint64_t guid[2];
+	ZeroMemory(&guid, sizeof(guid));
 	memcpy(guid, &ident.DeviceIdentifier, sizeof(GUID));
 
 	Log("%d GetAdapterIdentifier(%d) Driver \"%s\" Description \"%s\"\n"
@@ -30,19 +42,22 @@ static void printAdapter(IDirect3D8 *d3d, UINT adapterIndex)
 	Log("GetAdapterModeCount %u\n", modeCount);
 	for (UINT mi = 0; mi < modeCount; mi++)
 	{
-		D3DDISPLAYMODE mode{ 0 };
+		D3DDISPLAYMODE mode;
+		ZeroMemory(&mode, sizeof(mode));
 		r = d3d->EnumAdapterModes(adapterIndex, mi, &mode);
 		Log("%d EnumAdapterModes(%d, %d) %dx%d@%d fmt %d\n", r, adapterIndex, mi,
 			mode.Width, mode.Height, mode.RefreshRate, mode.Format);
 	}
-	D3DDISPLAYMODE mode{ 0 };
+	D3DDISPLAYMODE mode;
+	ZeroMemory(&mode, sizeof(mode));
 	r = d3d->GetAdapterDisplayMode(adapterIndex, &mode);
 	Log("%d GetAdapterDisplayMode(%d) %dx%d@%d fmt %d\n", r, adapterIndex,
 		mode.Width, mode.Height, mode.RefreshRate, mode.Format);
 	HMONITOR hm = d3d->GetAdapterMonitor(adapterIndex);
 	Log("GetAdapterMonitor(%d) %p\n", adapterIndex, hm);
 
-	D3DCAPS8 caps{};
+	D3DCAPS8 caps;
+	ZeroMemory(&caps, sizeof(caps));
 	r = d3d->GetDeviceCaps(adapterIndex, D3DDEVTYPE_HAL, &caps);
 	Log("%d GetDeviceCaps(%d HAL)\n"
 		"   DeviceType %d AdapterOrdinal %d\n"
@@ -85,8 +100,9 @@ std::string d3dErrorString(HRESULT r)
 		int sev = (r >> 31) & 1;
 		int fac = (r >> 16) & 0x7FFF;
 		int code = r & 0xFFFF;
-		char buff[256]{};
+		char buff[256] = {0};
 		snprintf(buff, 255, "%d 0x%X %d", sev, fac, code);
+		buff[255] = 0;
 		return std::string(buff);
 	}
 	std::string ret(lpMsgBuf);
@@ -105,11 +121,20 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	if (uMsg == WM_NCCREATE)
 	{
 		ctx = (d3d8TestContext*)((CREATESTRUCT*)lParam)->lpCreateParams;
+
+#ifndef SetWindowLongPtr
+		SetWindowLong(hWnd, GWL_USERDATA, (LONG)ctx);
+#else
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)ctx);
+#endif
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 
+#ifndef SetWindowLongPtr
+	ctx = (d3d8TestContext *)GetWindowLong(hWnd, GWL_USERDATA);
+#else
 	ctx = (d3d8TestContext *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+#endif
 
 	switch (uMsg)
 	{
@@ -128,7 +153,17 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int main(int argc, const char **argv)
 {
-	Log("hello\n");
+	HMODULE lib = LoadLibraryA("d3d8.dll");
+	Log("d3d8.dll %p\n", lib);
+	if (!lib)
+	{
+		printf("GetLastError %u\n", GetLastError());
+		return -1;
+	}
+
+	typedef IDirect3D8 *(WINAPI* PFN_Direct3DCreate8)(UINT SDKVersion);
+	PFN_Direct3DCreate8 Direct3DCreate8 = (PFN_Direct3DCreate8)GetProcAddress(lib, "Direct3DCreate8");
+	printf("%p Direct3DCreate8 PFN\n", Direct3DCreate8);
 
 	IDirect3D8 *d3d = Direct3DCreate8(D3D_SDK_VERSION);
 
@@ -144,7 +179,8 @@ int main(int argc, const char **argv)
 		printAdapter(d3d, ai);
 	}
 
-	d3d8TestContext ctx{};
+	d3d8TestContext ctx;
+	ZeroMemory(&ctx, sizeof(ctx));
 
 	// window
 	DWORD style = WS_OVERLAPPEDWINDOW;
@@ -156,7 +192,7 @@ int main(int argc, const char **argv)
 					  TEXT("D3D8TestWin"), NULL };
 	RegisterClassEx(&wc);
 
-	RECT winSize{ 0,0,640,480 };
+	RECT winSize = { 0,0,640,480 };
 	AdjustWindowRectEx(&winSize, style, false, exStyle);
 
 	HWND hWnd = CreateWindowEx(exStyle, TEXT("D3D8TestWin"), TEXT("D3D8 Test"),
@@ -166,9 +202,16 @@ int main(int argc, const char **argv)
 	printf("CreateWindowEx = %p\n", hWnd);
 	ShowWindow(hWnd, SW_SHOW);
 
-	D3DDISPLAYMODE mode{ 0 };
+	D3DDISPLAYMODE mode;
+	ZeroMemory(&mode, sizeof(mode));
 	HRESULT r = d3d->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &mode);
-	D3DPRESENT_PARAMETERS presentParams{};
+	Log("%d (%s) GetAdapterDisplayMode\n", r, d3dErrorString(r).c_str());
+
+	r = d3d->CheckDeviceType(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, mode.Format, mode.Format, true);
+	Log("%d (%s) CheckDeviceType(HAL, fmt %d)\n", r, d3dErrorString(r).c_str(), mode.Format);
+
+	D3DPRESENT_PARAMETERS presentParams;
+	ZeroMemory(&presentParams, sizeof(presentParams));
 	presentParams.BackBufferWidth = 640;
 	presentParams.BackBufferHeight = 480;
 	presentParams.BackBufferFormat = mode.Format;
@@ -178,10 +221,17 @@ int main(int argc, const char **argv)
 
 	IDirect3DDevice8 *d3dd = nullptr;
 	r = d3d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &presentParams, &d3dd);
-	Log("%d (%s) IDirect3D8::CreateDevice %p BackBufferCount %d\n", r, d3dErrorString(r).c_str(), d3dd, presentParams.BackBufferCount);
+	Log("%d (%s) IDirect3D8::CreateDevice(HARDWARE_VERTEXPROCESSING) %p BackBufferCount %d\n", r, d3dErrorString(r).c_str(), d3dd, presentParams.BackBufferCount);
 	if (!d3dd)
 	{
-		return -1;
+		Log("CreateDevice with D3DCREATE_HARDWARE_VERTEXPROCESSING failed\n");
+		r = d3d->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &presentParams, &d3dd);
+		Log("%d (%s) IDirect3D8::CreateDevice(SOFTWARE_VERTEXPROCESSING) %p BackBufferCount %d\n", r, d3dErrorString(r).c_str(), d3dd, presentParams.BackBufferCount);
+		if (!d3dd)
+		{
+			Log("CreateDevice with D3DCREATE_SOFTWARE_VERTEXPROCESSING failed\n");
+			return -1;
+		}
 	}
 
 	DWORD decl[] = {
@@ -306,7 +356,7 @@ int main(int argc, const char **argv)
 	vbo->Unlock();
 #else
 #if 0
-	vert_t verts[6]{
+	vert_t verts[6] = {
 		{150, 50, 0.1, 1, 0xFFFF0000},
 		{250, 250, 0.1, 1, 0xFF00FF00},
 		{50, 250, 0.1, 1, 0xFF0000FF},
@@ -316,10 +366,10 @@ int main(int argc, const char **argv)
 		{-0.5, -0.5, 0.1, 1, 0xFF0000FF}
 	};
 #else
-	vert2_t verts[3]{
-		{0, 0.5, 0.1, 0xFFFF0000, 0.5, 1},
-		{0.5, -0.5, 0.1, 0xFF00FF00, 1, 0},
-		{-0.5, -0.5, 0.1, 0xFF0000FF, 0, 0},
+	vert2_t verts[3] = {
+		{0, 0.5f, 0.1f, 0xFFFF0000, 0.5f, 1},
+		{0.5f, -0.5f, 0.1f, 0xFF00FF00, 1, 0},
+		{-0.5f, -0.5f, 0.1f, 0xFF0000FF, 0, 0},
 	};
 #endif
 #endif
@@ -330,7 +380,8 @@ int main(int argc, const char **argv)
 	IDirect3DTexture8 *tex = nullptr;
 	r = d3dd->CreateTexture(width, height, 1, 0, D3DFMT_X8R8G8B8, D3DPOOL_MANAGED, &tex);
 	Log("%d IDirect3DDevice8::CreateTexture %p\n", r, tex);
-	D3DLOCKED_RECT lockedRect{ 0 };
+	D3DLOCKED_RECT lockedRect;
+	ZeroMemory(&lockedRect, sizeof(lockedRect));
 	r = tex->LockRect(0, &lockedRect, nullptr, 0);
 	Log("%d (%s) IDirect3DTexture8::LockRect %p pitch 0x%X\n", r, d3dErrorString(r).c_str(), lockedRect.pBits, lockedRect.Pitch);
 	if (r == D3D_OK && lockedRect.pBits)
@@ -351,11 +402,17 @@ int main(int argc, const char **argv)
 	r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
 	Log("%d IDirect3DDevice8::Clear\n", r);
 
-	static int frame = 0;
 	//render
-	auto render = [&]()
+	struct render_functor{
+		IDirect3DDevice8 *d3dd;
+		DWORD fvf_vert;
+		IDirect3DTexture8 *tex;
+		int vertCount;
+		vert2_t *verts;
+
+		void operator()()
 	{
-	r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
+	HRESULT r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
 	r = d3dd->BeginScene();
 	if (r != D3D_OK)
 		return;
@@ -365,6 +422,7 @@ int main(int argc, const char **argv)
 #else
 	r = d3dd->SetVertexShader(vertShader);
 #endif
+	static int frame = 0;
 	frame++;
 #if 0
 	float ct = cos(frame * 0.01f) * 0.005;
@@ -403,12 +461,14 @@ int main(int argc, const char **argv)
 	r = d3dd->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertCount / 3, verts, sizeof(verts[0]));
 #endif
 	r = d3dd->EndScene();
-	};
+	}} render = {d3dd, fvf_vert, tex, vertCount, verts};
+
 	render();
 	r = d3dd->Present(nullptr, nullptr, nullptr, nullptr);
 	Log("%d Present\n", r);
 
-	MSG msg{};
+	MSG msg;
+	ZeroMemory(&msg, sizeof(msg));
 	//while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 	while (GetMessage(&msg, nullptr, 0, 0))
 	{

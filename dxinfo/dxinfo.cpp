@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #else
 #define uint64_t unsigned __int64
-#define PRIX64 "I64x" 
+#define PRIX64 "I64x"
 #define nullptr NULL
 #define snprintf _snprintf
 #endif
