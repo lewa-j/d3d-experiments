@@ -145,6 +145,21 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
+#define USE_TEXCOORD 1
+
+#if !USE_TEXCOORD
+	struct vert_t {
+		float x, y, z, rhw;
+		D3DCOLOR color;
+	};
+#else
+	struct vert_t {
+		float x, y, z;
+		D3DCOLOR color;
+		float s, t;
+	};
+#endif
+
 int main(int argc, const char **argv)
 {
 	HMODULE lib = LoadLibraryA("d3d8.dll");
@@ -231,8 +246,13 @@ int main(int argc, const char **argv)
 	DWORD decl[] = {
 		D3DVSD_STREAM(0),
 		D3DVSD_REG(D3DVSDE_POSITION, D3DVSDT_FLOAT3),
+#if !USE_TEXCOORD
 		D3DVSD_SKIP(1),
 		D3DVSD_REG(D3DVSDE_DIFFUSE, D3DVSDT_D3DCOLOR),
+#else
+		D3DVSD_REG(D3DVSDE_DIFFUSE, D3DVSDT_D3DCOLOR),
+		D3DVSD_REG(D3DVSDE_TEXCOORD0, D3DVSDT_FLOAT2),
+#endif
 		D3DVSD_END()
 	};
 	DWORD func[] = {
@@ -303,11 +323,19 @@ int main(int argc, const char **argv)
 		0 | D3DSP_WRITEMASK_ALL | D3DSPR_ATTROUT | 0x80000000,
 		4 | D3DVS_NOSWIZZLE | D3DSPR_CONST | 0x80000000,
 #else
-		//mov oD0, v1
+		////mov oD0, v1
+		//mov oD0, t0
 		D3DSIO_MOV,
 		0 | D3DSP_WRITEMASK_ALL | D3DSPR_ATTROUT | 0x80000000,
 		//D3DVSDE_DIFFUSE | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
 		0 | D3DVS_NOSWIZZLE | D3DSPR_TEMP | 0x80000000,
+#endif
+
+#if USE_TEXCOORD
+		//mov oTex0, tex0
+		D3DSIO_MOV,
+		0 | D3DSP_WRITEMASK_ALL | D3DSPR_TEXCRDOUT | 0x80000000,
+		D3DVSDE_TEXCOORD0 | D3DVS_NOSWIZZLE | D3DSPR_INPUT | 0x80000000,
 #endif
 		D3DVS_END()
 	};
@@ -315,41 +343,16 @@ int main(int argc, const char **argv)
 	r = d3dd->CreateVertexShader(decl, func, &vertShader, 0);
 	Log("%d (%s) IDirect3DDevice8::CreateVertexShader %d\n", r, d3dErrorString(r).c_str(), vertShader);
 
-#if 0
-	struct vert_t {
-		float x, y, z, rhw;
-		D3DCOLOR color;
-	};
+#if !USE_TEXCOORD
 	//const DWORD fvf_vert = D3DFVF_XYZRHW | D3DFVF_DIFFUSE;
 	const DWORD fvf_vert = D3DFVF_XYZ | D3DFVF_PSIZE | D3DFVF_DIFFUSE;
 	const int vertCount = 6;
 #else
-	struct vert2_t {
-		float x, y, z;
-		D3DCOLOR color;
-		float s, t;
-	};
 	const DWORD fvf_vert = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
 	const int vertCount = 3;
 #endif
-#define USE_VBO 0
-#if USE_VBO
-	IDirect3DVertexBuffer8 *vbo = nullptr;
-	r = d3dd->CreateVertexBuffer(sizeof(vert_t) * vertCount, 0, fvf_vert, D3DPOOL_DEFAULT, &vbo);
-	Log("%d CreateVertexBuffer %p\n", r, vbo);
 
-	//todo vert2
-	vert_t *pv = nullptr;
-	vbo->Lock(0, sizeof(vert_t) * vertCount, (BYTE **)&pv, 0);
-	pv[0] = {150, 50, 0.5, 1, 0xFFFF0000};
-	pv[1] = {250, 250, 0.5, 1, 0xFF00FF00};
-	pv[2] = {50, 250, 0.5, 1, 0xFF0000FF};
-	pv[3] = { 0, -0.5, 0.5, 1, 0xFFFF0000 };
-	pv[4] = { 0.5, 0.5, 0.5, 1, 0xFF00FF00 };
-	pv[5] = { -0.5, 0.5, 0.5, 1, 0xFF0000FF };
-	vbo->Unlock();
-#else
-#if 0
+#if !USE_TEXCOORD
 	vert_t verts[6] = {
 		{150, 50, 0.1, 1, 0xFFFF0000},
 		{250, 250, 0.1, 1, 0xFF00FF00},
@@ -360,12 +363,38 @@ int main(int argc, const char **argv)
 		{-0.5, -0.5, 0.1, 1, 0xFF0000FF}
 	};
 #else
-	vert2_t verts[3] = {
+	vert_t verts[3] = {
 		{0, 0.5f, 0.1f, 0xFFFF0000, 0.5f, 1},
 		{0.5f, -0.5f, 0.1f, 0xFF00FF00, 1, 0},
 		{-0.5f, -0.5f, 0.1f, 0xFF0000FF, 0, 0},
 	};
 #endif
+
+#define USE_VBO 0
+#if USE_VBO
+	IDirect3DVertexBuffer8 *vbo = nullptr;
+	r = d3dd->CreateVertexBuffer(sizeof(vert_t) * vertCount, 0, fvf_vert, D3DPOOL_DEFAULT, &vbo);
+	Log("%d CreateVertexBuffer %p\n", r, vbo);
+
+	vert_t *pv = nullptr;
+	vbo->Lock(0, sizeof(vert_t) * vertCount, (BYTE **)&pv, 0);
+#if 0
+#if !USE_TEXCOORD
+	pv[0] = {150, 50, 0.5, 1, 0xFFFF0000};
+	pv[1] = {250, 250, 0.5, 1, 0xFF00FF00};
+	pv[2] = {50, 250, 0.5, 1, 0xFF0000FF};
+	pv[3] = { 0, -0.5, 0.5, 1, 0xFFFF0000 };
+	pv[4] = { 0.5, 0.5, 0.5, 1, 0xFF00FF00 };
+	pv[5] = { -0.5, 0.5, 0.5, 1, 0xFF0000FF };
+#else
+	pv[0] = (vert_t){0, 0.5f, 0.1f, 0xFFFF0000, 0.5f, 1};
+	pv[1] = (vert_t){0.5f, -0.5f, 0.1f, 0xFF00FF00, 1, 0};
+	pv[2] = (vert_t){-0.5f, -0.5f, 0.1f, 0xFF0000FF, 0, 0};
+#endif
+#else
+	memcpy(pv, verts, sizeof(vert_t) * vertCount);
+#endif
+	vbo->Unlock();
 #endif
 
 	int width = 8;
@@ -396,21 +425,29 @@ int main(int argc, const char **argv)
 	r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
 	Log("%d IDirect3DDevice8::Clear\n", r);
 
+#define USE_FFP 0
+
 	//render
 	struct render_functor{
 		IDirect3DDevice8 *d3dd;
 		DWORD fvf_vert;
 		IDirect3DTexture8 *tex;
 		int vertCount;
-		vert2_t *verts;
-
+#if USE_VBO
+		IDirect3DVertexBuffer8 *vbo;
+#else
+		vert_t *verts;
+#endif
+#if !USE_FFP
+		DWORD vertShader;
+#endif
 		void operator()()
 	{
 	HRESULT r = d3dd->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 100, 255), 1, 0);
 	r = d3dd->BeginScene();
 	if (r != D3D_OK)
 		return;
-#define USE_FFP 1
+
 #if USE_FFP
 	r = d3dd->SetVertexShader(fvf_vert);
 #else
@@ -455,7 +492,16 @@ int main(int argc, const char **argv)
 	r = d3dd->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertCount / 3, verts, sizeof(verts[0]));
 #endif
 	r = d3dd->EndScene();
-	}} render = {d3dd, fvf_vert, tex, vertCount, verts};
+	}} render = {d3dd, fvf_vert, tex, vertCount, 
+#if USE_VBO
+		vbo
+#else
+		verts
+#endif
+#if !USE_FFP
+		,vertShader
+#endif
+	};
 
 	render();
 	r = d3dd->Present(nullptr, nullptr, nullptr, nullptr);
