@@ -4,7 +4,7 @@
 #include <string>
 #include <math.h>
 
-#if (_MSC_VER > 1100)//TODO test newer versions
+#if (_MSC_VER > 1200)//TODO test newer versions
 #include <stdint.h>
 #include <inttypes.h>
 #else
