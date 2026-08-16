@@ -3,8 +3,6 @@
 #include "d3d8.h"
 #include <string>
 #include <math.h>
-//#define GLM_FORCE_LEFT_HANDED 1
-//#include <glm/gtc/matrix_transform.hpp>
 
 #if (_MSC_VER > 1100)//TODO test newer versions
 #include <stdint.h>
@@ -277,7 +275,7 @@ int main(int argc, const char **argv)
 		mul r0, c0, v0.x
 		mad r0, c1, v0.y, r0 
 		mad r0, c2, v0.z, r0
-		mad oPos, c3, v0.w, r0
+		mad r0, c3, v0.w, r0
 		*/
 		D3DSIO_MUL,
 		0 | D3DSP_WRITEMASK_ALL | D3DSPR_TEMP | 0x80000000,
@@ -346,7 +344,7 @@ int main(int argc, const char **argv)
 
 	//todo vert2
 	vert_t *pv = nullptr;
-	vbo->Lock(0, sizeof(vert_t) *vertCount, (BYTE **)&pv, 0);
+	vbo->Lock(0, sizeof(vert_t) * vertCount, (BYTE **)&pv, 0);
 	pv[0] = {150, 50, 0.5, 1, 0xFFFF0000};
 	pv[1] = {250, 250, 0.5, 1, 0xFF00FF00};
 	pv[2] = {50, 250, 0.5, 1, 0xFF0000FF};
