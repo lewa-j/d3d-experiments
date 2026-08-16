@@ -86,6 +86,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="dx8info.cpp" />
     <ClCompile Include="dx8_test.cpp" />
   </ItemGroup>
   <ItemGroup>

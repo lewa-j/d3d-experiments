@@ -18,6 +18,9 @@
     <ClCompile Include="dx8_test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dx8info.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dxsdk_aug07\Include\d3d8.h">

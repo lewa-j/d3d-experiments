@@ -84,5 +84,9 @@ LINK32=link.exe
 
 SOURCE=.\dx8_test.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=.\dx8info.cpp
+# End Source File
 # End Target
 # End Project

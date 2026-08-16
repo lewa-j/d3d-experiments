@@ -17,6 +17,8 @@
 
 #define Log printf
 
+void printD3D8Info(const D3DCAPS8 &c);
+
 static void printAdapter(IDirect3D8 *d3d, UINT adapterIndex)
 {
 	D3DADAPTER_IDENTIFIER8 ident;
@@ -57,24 +59,15 @@ static void printAdapter(IDirect3D8 *d3d, UINT adapterIndex)
 	D3DCAPS8 caps;
 	ZeroMemory(&caps, sizeof(caps));
 	r = d3d->GetDeviceCaps(adapterIndex, D3DDEVTYPE_HAL, &caps);
-	Log("%d GetDeviceCaps(%d HAL)\n"
-		"   DeviceType %d AdapterOrdinal %d\n"
-		"   DevCaps 0x%X\n"
-		"   MaxTextureSize %dx%dx%d\n"
-		"   FVFCaps 0x%X TextureOpCaps 0x%X MaxTextureBlendStages %d MaxSimultaneousTextures %d\n"
-		"   VertexProcessingCaps 0x%X MaxActiveLights %d MaxUserClipPlanes %d MaxVertexBlendMatrices %d MaxVertexBlendMatrixIndex %d\n"
-		"   MaxPointSize %g MaxPrimitiveCount %d MaxVertexIndex %d MaxStreams %d MaxStreamStride %d\n"
-		"   VertexShaderVersion 0x%X MaxVertexShaderConst %d\n"
-		"   PixelShaderVersion 0x%X MaxPixelShaderValue %g\n",
-		r, adapterIndex,
-		caps.DeviceType, caps.AdapterOrdinal,
-		caps.DevCaps,
-		caps.MaxTextureWidth, caps.MaxTextureHeight, caps.MaxVolumeExtent,
-		caps.FVFCaps, caps.TextureOpCaps, caps.MaxTextureBlendStages, caps.MaxSimultaneousTextures,
-		caps.VertexProcessingCaps, caps.MaxActiveLights, caps.MaxUserClipPlanes, caps.MaxVertexBlendMatrices, caps.MaxVertexBlendMatrixIndex,
-		caps.MaxPointSize, caps.MaxPrimitiveCount, caps.MaxVertexIndex, caps.MaxStreams, caps.MaxStreamStride,
-		caps.VertexShaderVersion, caps.MaxVertexShaderConst,
-		caps.PixelShaderVersion, caps.MaxPixelShaderValue);
+	Log("%d GetDeviceCaps(%d HAL)\n", r, adapterIndex);
+	if (r == D3D_OK)
+		printD3D8Info(caps);
+
+	ZeroMemory(&caps, sizeof(caps));
+	r = d3d->GetDeviceCaps(adapterIndex, D3DDEVTYPE_REF, &caps);
+	Log("%d GetDeviceCaps(%d REF)\n", r, adapterIndex);
+	if (r == D3D_OK)
+		printD3D8Info(caps);
 }
 
 std::string d3dErrorString(HRESULT r)
