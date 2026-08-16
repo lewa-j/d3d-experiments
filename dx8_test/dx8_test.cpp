@@ -106,6 +106,8 @@ struct d3d8TestContext
 
 };
 
+static bool shouldClose = false;
+
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	d3d8TestContext *ctx = nullptr;
@@ -130,6 +132,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	switch (uMsg)
 	{
 	case WM_DESTROY:
+		shouldClose = true;
 		PostQuitMessage(0);
 		return 0;
 	case WM_PAINT:
@@ -425,8 +428,8 @@ int main(int argc, const char **argv)
 		(ct - st) * -150,(st + ct) * -150,0,1
 	};
 #else
-	float ct = cos(frame * 0.01f) * 1.5;
-	float st = sin(frame * 0.01f) * 1.5;
+	float ct = cos(frame * 0.02f) * 1.5;
+	float st = sin(frame * 0.02f) * 1.5;
 	D3DMATRIX mtxWorld = {
 		ct,st,0,0,
 		-st,ct,0,0,
@@ -458,14 +461,20 @@ int main(int argc, const char **argv)
 	r = d3dd->Present(nullptr, nullptr, nullptr, nullptr);
 	Log("%d Present\n", r);
 
-	MSG msg;
-	ZeroMemory(&msg, sizeof(msg));
-	//while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-	while (GetMessage(&msg, nullptr, 0, 0))
+	while (!shouldClose)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
 
+		MSG msg;
+		ZeroMemory(&msg, sizeof(msg));
+
+		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+		//while (GetMessage(&msg, nullptr, 0, 0))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		if (GetAsyncKeyState(VK_ESCAPE))
+			break;
 		render();
 		r = d3dd->Present(nullptr, nullptr, nullptr, nullptr);
 	}
