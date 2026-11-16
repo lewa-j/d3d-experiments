@@ -4,3 +4,5 @@ Win32_Debug
 Win32_Release
 x64_Debug
 x64_Release
+ARM64_Debug
+ARM64_Release
